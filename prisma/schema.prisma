@@ -1,0 +1,434 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User and Authentication
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String   @unique
+  password      String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  organizationMemberships OrganizationMember[]
+
+  accounts       Account[]
+  sessions       Session[]
+  leads          Lead[]        @relation("AssignedLeads")
+  createdLeads   Lead[]        @relation("CreatedLeads")
+  appointments   Appointment[]
+  activities     Activity[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Organization
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logo        String?
+  website     String?
+  phone       String?
+  email       String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members       OrganizationMember[]
+  users         User[]
+  leads         Lead[]
+  properties    Property[]
+  appointments  Appointment[]
+  aiConfigs     AIConfig[]
+  integrations  Integration[]
+  followUpSequences FollowUpSequence[]
+  subscriptions Subscription[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String   @default("MEMBER") // OWNER, ADMIN, MEMBER
+  invitedBy      String?
+  joinedAt       DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+// Lead Management
+model Lead {
+  id             String   @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  source         String   @default("MANUAL") // WEBSITE, WHATSAPP, INSTAGRAM, FACEBOOK, GOOGLE_ADS, MANUAL, IMPORT, OTHER
+  status         String   @default("NEW") // NEW, CONTACTED, QUALIFIED, HOT, WARM, COLD, APPOINTMENT, CONVERTED, LOST
+  
+  // Property Requirements
+  propertyType   String?  // Apartment, Villa, Plot, Commercial
+  bedrooms       Int?
+  bathrooms      Int?
+  budget         Int?     // In INR
+  location       String?
+  timeline       String?  // 3 months, 6 months, 1 year, flexible
+  possession     String?  // Ready to move, Under construction
+  intent         String?  // high, medium, low
+  
+  // Additional Info
+  notes          String?  @db.Text
+  lastActivityAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relationships
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  assignedToId   String?
+  assignedTo     User?        @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  
+  createdById    String?
+  createdBy      User?        @relation("CreatedLeads", fields: [createdById], references: [id])
+
+  conversations  Conversation[]
+  leadScores     LeadScore[]
+  appointments   Appointment[]
+  followUps      FollowUp[]
+  activities     Activity[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([source])
+  @@map("leads")
+}
+
+model LeadScore {
+  id                   String   @id @default(cuid())
+  leadId               String
+  score                Int      @default(0) // 0-100
+  classification       String   @default("COLD") // HOT, WARM, COLD
+  
+  // Scoring Factors
+  budgetMatch          Int      @default(0)
+  timelineScore        Int      @default(0)
+  engagementScore      Int      @default(0)
+  propertyInterestScore Int     @default(0)
+  locationMatch        Int      @default(0)
+  conversationScore    Int      @default(0)
+  
+  reasoning            String?  @db.Text
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@map("lead_scores")
+}
+
+// Conversations
+model Conversation {
+  id             String   @id @default(cuid())
+  leadId         String
+  channel        String   @default("WEB") // WEB, WHATSAPP, INSTAGRAM, EMAIL
+  status         String   @default("ACTIVE") // ACTIVE, CLOSED, PENDING
+  
+  // Extracted Info (JSON stored as Text)
+  extractedData  String?  @db.Text
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  messages    Message[]
+
+  @@index([leadId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String   // USER, ASSISTANT, SYSTEM
+  content        String   @db.Text
+  
+  // AI extracted info
+  extractedData  String?  @db.Text
+  
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+// Properties
+model Property {
+  id              String   @id @default(cuid())
+  name            String
+  projectName     String?
+  type            String   // Apartment, Villa, Plot, Commercial
+  status          String   @default("AVAILABLE") // AVAILABLE, SOLD, RESERVED
+  
+  // Location
+  location        String
+  address         String?
+  city            String?
+  state           String?
+  
+  // Details
+  price           Int       // In INR
+  bedrooms        Int?
+  bathrooms       Int?
+  area            Float?    // In sq ft
+  possessionStatus String? // Ready to move, Under construction
+  possessionDate  DateTime?
+  
+  // Features
+  amenities       String?   @db.Text // JSON array
+  description     String?   @db.Text
+  images          String?   @db.Text // JSON array of URLs
+  
+  availableUnits  Int       @default(1)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  appointments    Appointment[]
+
+  @@index([organizationId])
+  @@index([location])
+  @@map("properties")
+}
+
+// Appointments
+model Appointment {
+  id              String   @id @default(cuid())
+  date            DateTime
+  duration        Int      @default(60) // In minutes
+  status          String   @default("SCHEDULED") // SCHEDULED, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW
+  notes           String?  @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  leadId          String
+  lead            Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  propertyId      String?
+  property        Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  
+  assignedToId    String?
+  assignedTo      User? @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([leadId])
+  @@index([date])
+  @@map("appointments")
+}
+
+// Follow-up Sequences
+model FollowUpSequence {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?  @db.Text
+  isActive        Boolean  @default(true)
+  triggerEvent    String   @default("NEW_LEAD") // NEW_LEAD, LEAD_COLD, NO_RESPONSE
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  steps           FollowUpStep[]
+
+  @@index([organizationId])
+  @@map("follow_up_sequences")
+}
+
+model FollowUpStep {
+  id              String   @id @default(cuid())
+  sequenceId      String
+  order           Int      @default(0)
+  delayHours      Int      @default(24) // Hours after previous step
+  message         String   @db.Text
+  channel         String   @default("WHATSAPP") // WHATSAPP, EMAIL, SMS
+  
+  createdAt       DateTime @default(now())
+
+  sequence        FollowUpSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  @@index([sequenceId])
+  @@map("follow_up_steps")
+}
+
+model FollowUp {
+  id              String   @id @default(cuid())
+  leadId          String
+  stepId          String?
+  scheduledAt     DateTime
+  executedAt      DateTime?
+  status          String   @default("PENDING") // PENDING, SENT, FAILED
+  channel         String   @default("WHATSAPP")
+  message         String?  @db.Text
+  
+  createdAt       DateTime @default(now())
+
+  lead            Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([scheduledAt])
+  @@map("follow_ups")
+}
+
+// AI Configuration
+model AIConfig {
+  id                  String   @id @default(cuid())
+  agentName           String   @default("AI Sales Agent")
+  businessName        String?
+  businessDescription String?  @db.Text
+  tone                String   @default("professional") // professional, friendly, casual
+  languages           String   @default("en") // Comma-separated language codes
+  workingHours        String?  @db.Text // JSON with start/end times
+  companyPhone        String?
+  companyEmail        String?
+  aiInstructions      String?  @db.Text
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organizationId      String   @unique
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("ai_configs")
+}
+
+// Integrations
+model Integration {
+  id              String   @id @default(cuid())
+  type            String   // WHATSAPP, INSTAGRAM, FACEBOOK, GOOGLE_CALENDAR, GOOGLE_SHEETS, CRM, EMAIL, TWILIO
+  status          String   @default("NOT_CONNECTED") // CONNECTED, NOT_CONNECTED, PENDING, ERROR
+  config          String?  @db.Text // JSON config (encrypted)
+  lastSyncAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, type])
+  @@map("integrations")
+}
+
+// Activity Log
+model Activity {
+  id              String   @id @default(cuid())
+  type            String   // LEAD_CREATED, MESSAGE_SENT, APPOINTMENT_BOOKED, etc.
+  description     String   @db.Text
+  metadata        String?  @db.Text // JSON
+  
+  createdAt       DateTime @default(now())
+
+  organizationId  String?
+  leadId          String?
+  userId          String?
+
+  lead            Lead? @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user            User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([leadId])
+  @@index([createdAt])
+  @@map("activities")
+}
+
+// Subscriptions & Billing
+model Subscription {
+  id                  String   @id @default(cuid())
+  plan                String   @default("STARTER") // STARTER, GROWTH, SCALE
+  status              String   @default("ACTIVE") // ACTIVE, CANCELLED, PAST_DUE, TRIALING
+  currentPeriodStart  DateTime
+  currentPeriodEnd    DateTime?
+  cancelAtPeriodEnd   Boolean  @default(false)
+  
+  stripeCustomerId    String?  @unique
+  stripeSubscriptionId String? @unique
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organizationId      String
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
