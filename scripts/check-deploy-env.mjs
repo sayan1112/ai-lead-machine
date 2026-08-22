@@ -31,7 +31,7 @@ function loadDotEnvIfPresent() {
 loadDotEnvIfPresent();
 
 const isNetlifyOrCi = process.env.NETLIFY === "true" || process.env.CI === "true";
-const strictMode = process.argv.includes("--strict") || isNetlifyOrCi;
+const strictMode = isNetlifyOrCi;
 
 const required = ["DATABASE_URL", "NEXTAUTH_URL"];
 
@@ -66,6 +66,20 @@ if (process.env.NEXTAUTH_URL && !/^https?:\/\//i.test(process.env.NEXTAUTH_URL))
   console.error("\nDeployment environment check failed.\n");
   console.error("NEXTAUTH_URL must start with http:// or https://");
   process.exit(1);
+}
+
+if (strictMode) {
+  const databaseUrl = String(process.env.DATABASE_URL || "");
+  if (!/^postgres(?:ql)?:\/\//i.test(databaseUrl)) {
+    console.error("\nDeployment environment check failed.\n");
+    console.error("DATABASE_URL must be a PostgreSQL connection string in production.");
+    process.exit(1);
+  }
+  if (/(localhost|127\.0\.0\.1)/i.test(databaseUrl)) {
+    console.error("\nDeployment environment check failed.\n");
+    console.error("DATABASE_URL must not point to localhost in production.");
+    process.exit(1);
+  }
 }
 
 console.log("Deployment environment check passed.");

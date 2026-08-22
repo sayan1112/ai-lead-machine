@@ -19,6 +19,9 @@ export async function getWorkspaceContext(): Promise<WorkspaceContext | null> {
     where: {
       id: userId,
       organizationId: session.user.organizationId ?? undefined,
+      organizationMemberships: {
+        some: { organizationId: session.user.organizationId ?? "" },
+      },
     },
     select: { id: true, organizationId: true },
   })

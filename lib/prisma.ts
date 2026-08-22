@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -13,14 +12,7 @@ function createPrismaClient() {
     throw new Error('DATABASE_URL is required for Prisma')
   }
 
-  // Use SQLite adapter for file: URLs (local development), PostgreSQL for production
-  let adapter
-  if (connectionString.startsWith('file:')) {
-    adapter = new PrismaBetterSqlite3({ url: connectionString })
-  } else {
-    adapter = new PrismaPg({ connectionString })
-  }
-  return new PrismaClient({ adapter })
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) })
 }
 
 export const prisma =

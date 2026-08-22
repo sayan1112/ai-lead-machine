@@ -10,6 +10,6 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env.DATABASE_URL || "file:./dev.db",
+    url: process.env.DATABASE_URL || "postgresql://localhost/ai_lead_machine",
   },
 });

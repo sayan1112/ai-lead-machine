@@ -21,6 +21,8 @@ export function LeadList({ leads, onEdit, onDelete, onView }: LeadListProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [sourceFilter, setSourceFilter] = useState("ALL")
+  const [scoreFilter, setScoreFilter] = useState("ALL")
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState("ALL")
 
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch =
@@ -31,8 +33,10 @@ export function LeadList({ leads, onEdit, onDelete, onView }: LeadListProps) {
 
     const matchesStatus = statusFilter === "ALL" || lead.status === statusFilter
     const matchesSource = sourceFilter === "ALL" || lead.source === sourceFilter
+    const matchesScore = scoreFilter === "ALL" || lead.classification === scoreFilter
+    const matchesPropertyType = propertyTypeFilter === "ALL" || lead.propertyType === propertyTypeFilter
 
-    return matchesSearch && matchesStatus && matchesSource
+    return matchesSearch && matchesStatus && matchesSource && matchesScore && matchesPropertyType
   })
 
   if (filteredLeads.length === 0) {
@@ -60,7 +64,7 @@ export function LeadList({ leads, onEdit, onDelete, onView }: LeadListProps) {
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -89,6 +93,28 @@ export function LeadList({ leads, onEdit, onDelete, onView }: LeadListProps) {
             <option value="PROPERTY_PORTAL">Property Portal</option>
             <option value="REFERRAL">Referral</option>
             <option value="DIRECT_ENQUIRY">Direct Enquiry</option>
+          </select>
+          <select
+            value={scoreFilter}
+            onChange={(e) => setScoreFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">All Scores</option>
+            <option value="HOT">Hot (80–100)</option>
+            <option value="WARM">Warm (60–79)</option>
+            <option value="COOL">Cool (40–59)</option>
+            <option value="COLD">Cold (0–39)</option>
+          </select>
+          <select
+            value={propertyTypeFilter}
+            onChange={(e) => setPropertyTypeFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">All Property Types</option>
+            <option value="Apartment">Apartment</option>
+            <option value="Villa">Villa</option>
+            <option value="Plot">Plot</option>
+            <option value="Commercial">Commercial</option>
           </select>
         </div>
       </div>

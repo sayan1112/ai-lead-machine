@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // User and Authentication
@@ -355,11 +355,12 @@ model FollowUp {
   stepId          String?
   scheduledAt     DateTime
   executedAt      DateTime?
-  status          String   @default("PENDING") // PENDING, SENT, FAILED
+  status          String   @default("PENDING") // PENDING, COMPLETED, MISSED, CANCELLED
   channel         String   @default("WHATSAPP")
   message         String?
   
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   lead            Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

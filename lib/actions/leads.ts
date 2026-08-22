@@ -26,6 +26,26 @@ const leadSchema = z.object({
 
 type LeadInput = z.infer<typeof leadSchema>
 
+function scoreLeadInput(input: LeadInput) {
+  const budgetMatch = input.budget ? 20 : 0
+  const timelineScore = input.timeline ? 15 : 0
+  const propertyInterestScore = input.propertyType || input.bedrooms ? 15 : 0
+  const locationMatch = input.location ? 15 : 0
+  const conversationScore = input.intent?.toLowerCase() === "high" ? 15 : input.intent?.toLowerCase() === "medium" ? 8 : input.intent?.toLowerCase() === "low" ? 3 : 0
+  const engagementScore = (input.email ? 3 : 0) + (input.phone ? 3 : 0) + (input.notes ? 4 : 0)
+  const score = Math.min(100, budgetMatch + timelineScore + propertyInterestScore + locationMatch + conversationScore + engagementScore)
+  const classification = score >= 80 ? "HOT" : score >= 60 ? "WARM" : score >= 40 ? "COOL" : "COLD"
+  const reasons = [
+    budgetMatch ? "Budget captured" : null,
+    timelineScore ? "Timeline captured" : null,
+    propertyInterestScore ? "Property requirements captured" : null,
+    locationMatch ? "Preferred location captured" : null,
+    conversationScore ? "Buying intent captured" : null,
+    engagementScore ? "Contact details and notes available" : null,
+  ].filter(Boolean)
+  return { score, classification, budgetMatch, timelineScore, propertyInterestScore, locationMatch, conversationScore, engagementScore, reasoning: JSON.stringify(reasons) }
+}
+
 function cleanInput(data: LeadInput) {
   return {
     name: data.name,
@@ -98,9 +118,10 @@ export async function createLead(data: LeadInput) {
     if (!context) return { lead: null, error: "Unauthorized" }
     const validated = leadSchema.parse(data)
     const input = cleanInput(validated)
+    const score = scoreLeadInput(validated)
     const lead = await prisma.$transaction(async (tx) => {
-      const created = await tx.lead.create({ data: { ...input, organizationId: context.organizationId, createdById: context.userId, assignedToId: context.userId } })
-      await tx.leadScore.create({ data: { leadId: created.id, organizationId: context.organizationId, reasoning: JSON.stringify(["Awaiting conversation signals"]) } })
+      const created = await tx.lead.create({ data: { ...input, score: score.score, classification: score.classification, organizationId: context.organizationId, createdById: context.userId, assignedToId: context.userId } })
+      await tx.leadScore.create({ data: { leadId: created.id, organizationId: context.organizationId, ...score } })
       let sequence = await tx.followUpSequence.findFirst({ where: { organizationId: context.organizationId, triggerEvent: "NEW_LEAD", isActive: true }, include: { steps: { orderBy: { order: "asc" } } } })
       if (!sequence) {
         sequence = await tx.followUpSequence.create({ data: { organizationId: context.organizationId, name: "New lead follow-up", description: "A conservative three-touch sequence for new property enquiries.", steps: { create: [
@@ -136,7 +157,12 @@ export async function updateLead(id: string, data: Partial<LeadInput>) {
     const existing = await prisma.lead.findFirst({ where: { id, organizationId: context.organizationId } })
     if (!existing) return { lead: null, error: "Lead not found" }
     const merged = { ...existing, ...validated } as LeadInput
-    const lead = await prisma.lead.update({ where: { id }, data: cleanInput(merged) })
+    const score = scoreLeadInput(merged)
+    const lead = await prisma.$transaction(async (tx) => {
+      const updated = await tx.lead.update({ where: { id }, data: { ...cleanInput(merged), score: score.score, classification: score.classification } })
+      await tx.leadScore.create({ data: { leadId: id, organizationId: context.organizationId, ...score } })
+      return updated
+    })
     await prisma.activity.create({ data: { type: validated.status && validated.status !== existing.status ? "LEAD_STATUS_CHANGED" : "LEAD_UPDATED", description: validated.status && validated.status !== existing.status ? `Lead status changed from ${existing.status} to ${validated.status}` : `Lead "${lead.name}" was updated`, organizationId: context.organizationId, leadId: id, userId: context.userId } })
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/leads")

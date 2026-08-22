@@ -8,7 +8,7 @@ const registrationSchema = z.object({
   name: z.string().trim().min(2).max(120),
   organizationName: z.string().trim().min(2).max(120),
   email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(8).max(128),
+  password: z.string().min(8, "Password must be at least 8 characters").max(128).regex(/[A-Za-z]/, "Password must include a letter").regex(/[0-9]/, "Password must include a number"),
 })
 
 function slugify(value: string) {
@@ -45,6 +45,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, organizationId: organization.id }, { status: 201 })
   } catch (error) {
     console.error("Registration failed", error)
+    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
+      return NextResponse.json({ error: "An account or workspace with these details already exists." }, { status: 409 })
+    }
     return NextResponse.json({ error: "We could not create your workspace right now. Please try again." }, { status: 500 })
   }
 }

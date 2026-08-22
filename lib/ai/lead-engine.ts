@@ -137,7 +137,7 @@ function calculateScore(lead: { budget: number | null; timeline: string | null; 
   const appointmentScore = requestedAppointment ? 25 : 0
   if (appointmentScore) reasons.push("Requested an appointment or property visit")
   const score = Math.min(100, budgetMatch + timelineScore + locationMatch + propertyInterestScore + engagementScore + appointmentScore)
-  const classification = score >= 80 ? "HOT" : score >= 50 ? "WARM" : "COLD"
+  const classification = score >= 80 ? "HOT" : score >= 60 ? "WARM" : score >= 40 ? "COOL" : "COLD"
   return { score, classification, budgetMatch, timelineScore, engagementScore, propertyInterestScore, locationMatch, conversationScore: appointmentScore, reasons }
 }
 

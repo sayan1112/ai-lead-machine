@@ -13,6 +13,9 @@ const appointmentSchema = z.object({
   notes: z.string().trim().max(4_000).optional(),
 })
 
+const appointmentStatusSchema = z.enum(["SCHEDULED", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"])
+const appointmentUpdateSchema = appointmentSchema.partial().extend({ status: appointmentStatusSchema.optional() })
+
 export async function getAppointments(filters?: {
   status?: string
   leadId?: string
@@ -203,6 +206,7 @@ export async function updateAppointment(id: string, data: Partial<z.infer<typeof
       return { appointment: null, error: "Unauthorized" }
     }
 
+    const validated = appointmentUpdateSchema.parse(data)
     const existing = await prisma.appointment.findFirst({
       where: { id, organizationId: context.organizationId },
     })
@@ -213,11 +217,24 @@ export async function updateAppointment(id: string, data: Partial<z.infer<typeof
 
     const updateData: any = {}
 
-    if (data.date) updateData.date = new Date(data.date)
-    if (data.duration) updateData.duration = data.duration
-    if (data.notes !== undefined) updateData.notes = data.notes || null
-    if (data.propertyId !== undefined) updateData.propertyId = data.propertyId || null
-    if (data.status) updateData.status = data.status
+    if (validated.date) updateData.date = new Date(validated.date)
+    if (validated.duration !== undefined) updateData.duration = validated.duration
+    if (validated.notes !== undefined) updateData.notes = validated.notes || null
+    if (validated.status) updateData.status = validated.status
+
+    if (validated.leadId && validated.leadId !== existing.leadId) {
+      const lead = await prisma.lead.findFirst({ where: { id: validated.leadId, organizationId: context.organizationId }, select: { id: true } })
+      if (!lead) return { appointment: null, error: "Lead not found" }
+      updateData.leadId = lead.id
+    }
+
+    if (validated.propertyId !== undefined) {
+      if (validated.propertyId) {
+        const property = await prisma.property.findFirst({ where: { id: validated.propertyId, organizationId: context.organizationId }, select: { id: true } })
+        if (!property) return { appointment: null, error: "Property not found" }
+      }
+      updateData.propertyId = validated.propertyId || null
+    }
 
     const appointment = await prisma.appointment.update({
       where: { id },
@@ -229,18 +246,18 @@ export async function updateAppointment(id: string, data: Partial<z.infer<typeof
     })
 
     // Create activity log for status change
-    if (data.status && data.status !== existing.status) {
+    if (validated.status && validated.status !== existing.status) {
       await prisma.activity.create({
         data: {
           type: "APPOINTMENT_STATUS_CHANGED",
-          description: `Appointment status changed to ${data.status}`,
+          description: `Appointment status changed to ${validated.status}`,
           organizationId: context.organizationId,
           leadId: existing.leadId,
           userId: context.userId,
         },
       })
-      if (["COMPLETED", "CANCELLED", "NO_SHOW"].includes(data.status)) {
-        await prisma.followUp.updateMany({ where: { leadId: existing.leadId, organizationId: context.organizationId, status: "PENDING" }, data: { status: "FAILED", message: "Stopped because the appointment reached a terminal state." } })
+      if (["COMPLETED", "CANCELLED", "NO_SHOW"].includes(validated.status)) {
+        await prisma.followUp.updateMany({ where: { leadId: existing.leadId, organizationId: context.organizationId, status: "PENDING" }, data: { status: "CANCELLED", message: "Stopped because the appointment reached a terminal state." } })
       }
     }
 
