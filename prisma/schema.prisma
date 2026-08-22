@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 // User and Authentication
@@ -41,12 +41,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -136,7 +136,7 @@ model Lead {
   intent         String?  // high, medium, low
   
   // Additional Info
-  notes          String?  @db.Text
+  notes          String?
   lastActivityAt DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -177,7 +177,7 @@ model LeadScore {
   locationMatch        Int      @default(0)
   conversationScore    Int      @default(0)
   
-  reasoning            String?  @db.Text
+  reasoning            String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -195,7 +195,7 @@ model Conversation {
   status         String   @default("ACTIVE") // ACTIVE, CLOSED, PENDING
   
   // Extracted Info (JSON stored as Text)
-  extractedData  String?  @db.Text
+  extractedData  String?
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -211,10 +211,10 @@ model Message {
   id             String   @id @default(cuid())
   conversationId String
   role           String   // USER, ASSISTANT, SYSTEM
-  content        String   @db.Text
+  content        String
   
   // AI extracted info
-  extractedData  String?  @db.Text
+  extractedData  String?
   
   createdAt      DateTime @default(now())
 
@@ -247,9 +247,9 @@ model Property {
   possessionDate  DateTime?
   
   // Features
-  amenities       String?   @db.Text // JSON array
-  description     String?   @db.Text
-  images          String?   @db.Text // JSON array of URLs
+  amenities       String?   // JSON array
+  description     String?
+  images          String?   // JSON array of URLs
   
   availableUnits  Int       @default(1)
   
@@ -272,7 +272,7 @@ model Appointment {
   date            DateTime
   duration        Int      @default(60) // In minutes
   status          String   @default("SCHEDULED") // SCHEDULED, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW
-  notes           String?  @db.Text
+  notes           String?
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -299,7 +299,7 @@ model Appointment {
 model FollowUpSequence {
   id              String   @id @default(cuid())
   name            String
-  description     String?  @db.Text
+  description     String?
   isActive        Boolean  @default(true)
   triggerEvent    String   @default("NEW_LEAD") // NEW_LEAD, LEAD_COLD, NO_RESPONSE
   
@@ -320,7 +320,7 @@ model FollowUpStep {
   sequenceId      String
   order           Int      @default(0)
   delayHours      Int      @default(24) // Hours after previous step
-  message         String   @db.Text
+  message         String
   channel         String   @default("WHATSAPP") // WHATSAPP, EMAIL, SMS
   
   createdAt       DateTime @default(now())
@@ -339,7 +339,7 @@ model FollowUp {
   executedAt      DateTime?
   status          String   @default("PENDING") // PENDING, SENT, FAILED
   channel         String   @default("WHATSAPP")
-  message         String?  @db.Text
+  message         String?
   
   createdAt       DateTime @default(now())
 
@@ -355,13 +355,13 @@ model AIConfig {
   id                  String   @id @default(cuid())
   agentName           String   @default("AI Sales Agent")
   businessName        String?
-  businessDescription String?  @db.Text
+  businessDescription String?
   tone                String   @default("professional") // professional, friendly, casual
   languages           String   @default("en") // Comma-separated language codes
-  workingHours        String?  @db.Text // JSON with start/end times
+  workingHours        String?  // JSON with start/end times
   companyPhone        String?
   companyEmail        String?
-  aiInstructions      String?  @db.Text
+  aiInstructions      String?
   
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -377,7 +377,7 @@ model Integration {
   id              String   @id @default(cuid())
   type            String   // WHATSAPP, INSTAGRAM, FACEBOOK, GOOGLE_CALENDAR, GOOGLE_SHEETS, CRM, EMAIL, TWILIO
   status          String   @default("NOT_CONNECTED") // CONNECTED, NOT_CONNECTED, PENDING, ERROR
-  config          String?  @db.Text // JSON config (encrypted)
+  config          String?  // JSON config (encrypted)
   lastSyncAt      DateTime?
   
   createdAt       DateTime @default(now())
@@ -394,8 +394,8 @@ model Integration {
 model Activity {
   id              String   @id @default(cuid())
   type            String   // LEAD_CREATED, MESSAGE_SENT, APPOINTMENT_BOOKED, etc.
-  description     String   @db.Text
-  metadata        String?  @db.Text // JSON
+  description     String
+  metadata        String?  // JSON
   
   createdAt       DateTime @default(now())
 
