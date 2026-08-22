@@ -5,6 +5,10 @@
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
+  # Make local Netlify CLI builds use the same strict checks as remote builds.
+  # DATABASE_URL, AUTH_SECRET, and NEXTAUTH_URL must be supplied privately in
+  # the Netlify environment; never put their values in this file.
+  NETLIFY = "true"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
@@ -13,4 +17,3 @@
 # DATABASE_URL = "postgresql://user:password@host:port/database"
 # AUTH_SECRET = "your-secret-key-min-32-chars"
 # NEXTAUTH_URL = "https://your-site.netlify.app"
-
