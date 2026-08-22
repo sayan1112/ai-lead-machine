@@ -19,6 +19,7 @@ export default function LeadsClient({ initialLeads, initialTotal, initialError }
   const [editingLead, setEditingLead] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: "error" | "success"; text: string } | null>(initialError ? { type: "error", text: initialError } : null)
   const importInputRef = useRef<HTMLInputElement>(null)
 
   const handleCreate = () => {
@@ -40,10 +41,11 @@ export default function LeadsClient({ initialLeads, initialTotal, initialError }
     const { removeLead } = await import("@/lib/actions/leads")
     const result = await removeLead(id)
     if (result.error) {
-      alert(result.error)
+      setFeedback({ type: "error", text: result.error })
     } else {
       setLeads(leads.filter((l: any) => l.id !== id))
       setTotal((count) => Math.max(0, count - 1))
+      setFeedback({ type: "success", text: "Lead removed from your workspace." })
     }
   }
 
@@ -81,7 +83,9 @@ export default function LeadsClient({ initialLeads, initialTotal, initialError }
         setLeads((current) => [...imported, ...current])
         setTotal((count) => count + imported.length)
       }
-      alert(imported.length ? `${imported.length} property enquiries imported.` : "No valid property enquiries were found in that file.")
+      setFeedback({ type: imported.length ? "success" : "error", text: imported.length ? `${imported.length} property enquiries imported.` : "No valid property enquiries were found in that file." })
+    } catch {
+      setFeedback({ type: "error", text: "Unable to import leads from this file." })
     } finally {
       setIsImporting(false)
     }
@@ -94,20 +98,22 @@ export default function LeadsClient({ initialLeads, initialTotal, initialError }
         const { updateLead } = await import("@/lib/actions/leads")
         const result = await updateLead(editingLead.id, data)
         if (result.error) {
-          alert(result.error)
+          setFeedback({ type: "error", text: result.error })
         } else {
           setShowForm(false)
           setLeads(leads.map((l: any) => l.id === editingLead.id ? result.lead : l))
+          setFeedback({ type: "success", text: "Lead updated successfully." })
         }
       } else {
         const { createLead } = await import("@/lib/actions/leads")
         const result = await createLead(data)
         if (result.error) {
-          alert(result.error)
+          setFeedback({ type: "error", text: result.error })
         } else {
           setShowForm(false)
           setLeads([result.lead, ...leads])
           setTotal((count) => count + 1)
+          setFeedback({ type: "success", text: "Lead created successfully." })
         }
       }
     } finally {
@@ -129,6 +135,8 @@ export default function LeadsClient({ initialLeads, initialTotal, initialError }
         <div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">Sales pipeline</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-950">Leads</h1><p className="mt-2 text-sm text-slate-500">Manage, qualify, and convert every property enquiry from one place.</p></div>
         <div className="flex flex-wrap gap-2"><input ref={importInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImport} /><button onClick={() => importInputRef.current?.click()} disabled={isImporting} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 disabled:opacity-60">{isImporting ? "Importing..." : "Import Leads"}</button><button onClick={handleCreate} className="rounded-xl bg-[#07111f] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-[#10243a]">+ Add Lead</button></div>
       </div>
+
+      {feedback && <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${feedback.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`} role="status">{feedback.text}</div>}
 
       <p className="mb-4 text-sm text-slate-500">Showing {leads.length} of {total} property enquiries</p>
       <Suspense fallback={<div className="animate-pulse space-y-4"><div className="h-64 rounded-lg bg-gray-100" /></div>}>

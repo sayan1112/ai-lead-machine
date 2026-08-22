@@ -11,13 +11,14 @@ export async function getDashboardData() {
     const now = new Date()
     const [
       totalLeads, qualifiedLeads, hotLeads, wonLeads, totalAppointments,
-      activeProperties, pipelineValue, statusGroups, recentLeads, upcomingAppointments,
+      upcomingFollowUps, activeProperties, pipelineValue, statusGroups, recentLeads, upcomingAppointments,
     ] = await Promise.all([
       prisma.lead.count({ where: { organizationId } }),
       prisma.lead.count({ where: { organizationId, status: { in: ["QUALIFIED", "APPOINTMENT", "NEGOTIATION", "WON"] } } }),
       prisma.lead.count({ where: { organizationId, classification: "HOT" } }),
       prisma.lead.count({ where: { organizationId, status: "WON" } }),
-      prisma.appointment.count({ where: { organizationId, status: { in: ["SCHEDULED", "CONFIRMED"] }, date: { gte: now } } }),
+      prisma.appointment.count({ where: { organizationId } }),
+      prisma.followUp.count({ where: { organizationId, status: "PENDING", scheduledAt: { gte: now } } }),
       prisma.property.count({ where: { organizationId, status: "AVAILABLE", availableUnits: { gt: 0 } } }),
       prisma.lead.aggregate({ where: { organizationId, status: { notIn: ["LOST", "WON"] } }, _sum: { budget: true } }),
       prisma.lead.groupBy({ by: ["status"], where: { organizationId }, _count: { status: true } }),
@@ -25,7 +26,7 @@ export async function getDashboardData() {
       prisma.appointment.findMany({ where: { organizationId, date: { gte: now }, status: { in: ["SCHEDULED", "CONFIRMED"] } }, select: { id: true, date: true, duration: true, status: true, lead: { select: { id: true, name: true } }, property: { select: { id: true, name: true, location: true } } }, orderBy: { date: "asc" }, take: 5 }),
     ])
     const pipeline = ["NEW", "CONTACTED", "QUALIFIED", "APPOINTMENT", "NEGOTIATION", "WON", "LOST"].map((status) => ({ status, count: statusGroups.find((item) => item.status === status)?._count.status || 0 }))
-    return { stats: { totalLeads, qualifiedLeads, hotLeads, appointments: totalAppointments, activeProperties, wonLeads, conversionRate: totalLeads ? Number(((wonLeads / totalLeads) * 100).toFixed(1)) : 0, pipelineValue: pipelineValue._sum.budget || 0 }, pipeline, recentLeads, upcomingAppointments }
+    return { stats: { totalLeads, qualifiedLeads, hotLeads, appointments: totalAppointments, upcomingFollowUps, activeProperties, wonLeads, conversionRate: totalLeads ? Number(((wonLeads / totalLeads) * 100).toFixed(1)) : 0, pipelineValue: pipelineValue._sum.budget || 0 }, pipeline, recentLeads, upcomingAppointments }
   } catch (error) {
     console.error("Dashboard query failed", error)
     return { error: "Unable to load dashboard data right now." as const }

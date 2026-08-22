@@ -18,6 +18,7 @@ export default function AppointmentsClient({ initialAppointments, initialTotal, 
   const [showForm, setShowForm] = useState(false)
   const [editingAppointment, setEditingAppointment] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: "error" | "success"; text: string } | null>(initialError ? { type: "error", text: initialError } : null)
 
   const handleCreate = () => {
     setEditingAppointment(null)
@@ -34,9 +35,10 @@ export default function AppointmentsClient({ initialAppointments, initialTotal, 
     const { removeAppointment } = await import("@/lib/actions/appointments")
     const result = await removeAppointment(id)
     if (result.error) {
-      alert(result.error)
+      setFeedback({ type: "error", text: result.error })
     } else {
       setAppointments(appointments.filter(a => a.id !== id))
+      setFeedback({ type: "success", text: "Appointment removed successfully." })
     }
   }
 
@@ -47,19 +49,21 @@ export default function AppointmentsClient({ initialAppointments, initialTotal, 
         const { updateAppointment } = await import("@/lib/actions/appointments")
         const result = await updateAppointment(editingAppointment.id, data)
         if (result.error) {
-          alert(result.error)
+          setFeedback({ type: "error", text: result.error })
         } else {
           setShowForm(false)
           setAppointments(appointments.map(a => a.id === editingAppointment.id ? result.appointment : a))
+          setFeedback({ type: "success", text: "Appointment updated successfully." })
         }
       } else {
         const { createAppointment } = await import("@/lib/actions/appointments")
         const result = await createAppointment(data)
         if (result.error) {
-          alert(result.error)
+          setFeedback({ type: "error", text: result.error })
         } else {
           setShowForm(false)
           setAppointments([result.appointment, ...appointments])
+          setFeedback({ type: "success", text: "Appointment scheduled successfully." })
         }
       }
     } finally {
@@ -81,6 +85,7 @@ export default function AppointmentsClient({ initialAppointments, initialTotal, 
         <div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">Client activity</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-950">Appointments</h1><p className="mt-2 text-sm text-slate-500">Keep property visits, calls, and client meetings organized.</p></div>
         <button onClick={handleCreate} className="w-fit rounded-xl bg-[#07111f] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-[#10243a]">+ Schedule Appointment</button>
       </div>
+      {feedback && <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${feedback.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`} role="status">{feedback.text}</div>}
       <div className="mb-6 flex flex-wrap gap-2 text-xs font-medium text-slate-600"><span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Property Visit</span><span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Client Call</span><span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Site Visit</span><span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Consultation</span><span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Follow-Up Meeting</span></div>
       {/* Upcoming Appointments */}
       {upcoming.length > 0 && (

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Building2, CalendarDays, LayoutDashboard, Settings, Sparkles, Users } from "lucide-react";
+import { BarChart3, BarChartBig, Building2, CalendarDays, ClipboardCheck, LayoutDashboard, ListChecks, MessageSquareText, Settings, Sparkles, Users } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { logout } from "@/lib/actions/session";
 import "@/app/globals.css";
@@ -12,8 +12,12 @@ export const metadata = {
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/leads", label: "Leads", icon: Users },
-  { href: "/dashboard/appointments", label: "Appointments", icon: CalendarDays },
+  { href: "/dashboard/ai", label: "AI Assistant", icon: MessageSquareText },
+  { href: "/dashboard/scoring", label: "Lead Scoring", icon: ClipboardCheck },
   { href: "/dashboard/properties", label: "Properties", icon: Building2 },
+  { href: "/dashboard/appointments", label: "Appointments", icon: CalendarDays },
+  { href: "/dashboard/follow-ups", label: "Follow-ups", icon: ListChecks },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChartBig },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

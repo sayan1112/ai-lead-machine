@@ -16,6 +16,7 @@ export default function PropertiesClient({ initialProperties, initialTotal, init
   const [showForm, setShowForm] = useState(false)
   const [editingProperty, setEditingProperty] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: "error" | "success"; text: string } | null>(initialError ? { type: "error", text: initialError } : null)
 
   const handleCreate = () => {
     setEditingProperty(null)
@@ -32,9 +33,10 @@ export default function PropertiesClient({ initialProperties, initialTotal, init
     const { deleteProperty } = await import("@/lib/actions/properties")
     const result = await deleteProperty(id)
     if (result.error) {
-      alert(result.error)
+      setFeedback({ type: "error", text: result.error })
     } else {
       setProperties(properties.filter((p: any) => p.id !== id))
+      setFeedback({ type: "success", text: "Property removed from your inventory." })
     }
   }
 
@@ -45,19 +47,21 @@ export default function PropertiesClient({ initialProperties, initialTotal, init
         const { updateProperty } = await import("@/lib/actions/properties")
         const result = await updateProperty(editingProperty.id, data)
         if (result.error) {
-          alert(result.error)
+          setFeedback({ type: "error", text: result.error })
         } else {
           setShowForm(false)
           setProperties(properties.map((p: any) => p.id === editingProperty.id ? result.property : p))
+          setFeedback({ type: "success", text: "Property updated successfully." })
         }
       } else {
         const { createProperty } = await import("@/lib/actions/properties")
         const result = await createProperty(data)
         if (result.error) {
-          alert(result.error)
+          setFeedback({ type: "error", text: result.error })
         } else {
           setShowForm(false)
           setProperties([result.property, ...properties])
+          setFeedback({ type: "success", text: "Property added successfully." })
         }
       }
     } finally {
@@ -79,6 +83,8 @@ export default function PropertiesClient({ initialProperties, initialTotal, init
         <div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">Inventory workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-950">Properties</h1><p className="mt-2 text-sm text-slate-500">Manage your property inventory and connect opportunities to the right listings.</p></div>
         <button onClick={handleCreate} className="w-fit rounded-xl bg-[#07111f] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-[#10243a]">+ Add Property</button>
       </div>
+
+      {feedback && <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${feedback.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`} role="status">{feedback.text}</div>}
 
       <p className="mb-4 text-sm text-slate-500">Showing {properties.length} of {total} listings</p>
 

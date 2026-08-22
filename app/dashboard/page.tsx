@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { getDashboardData } from "@/lib/actions/dashboard"
-import { ArrowUpRight, CalendarDays, CheckCircle2, CircleDollarSign, Home, Sparkles, Users } from "lucide-react"
+import { ArrowUpRight, BarChart3, CalendarDays, CheckCircle2, CircleDollarSign, Home, Sparkles, Users } from "lucide-react"
 
 export const metadata = { title: "Sales Overview | AI Lead Machine", description: "Track your real estate pipeline, opportunities, appointments, and conversions." }
 
@@ -27,11 +27,13 @@ export default async function Dashboard() {
 
       {!hasActivity && <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center"><p className="text-base font-semibold text-slate-900">No activity yet</p><p className="mt-2 text-sm text-slate-500">Add your first lead or property to start building your workspace view.</p><Link href="/dashboard/leads" className="mt-5 inline-flex rounded-xl bg-[#07111f] px-4 py-2.5 text-sm font-semibold text-white">Add your first lead</Link></section>}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">{[
         { label: "Total Leads", value: data.stats.totalLeads, detail: "All property enquiries", icon: Users, color: "bg-sky-50 text-sky-700" },
-        { label: "Qualified Leads", value: data.stats.qualifiedLeads, detail: "Ready for a next step", icon: CheckCircle2, color: "bg-violet-50 text-violet-700" },
-        { label: "Appointments", value: data.stats.appointments, detail: "Upcoming scheduled activities", icon: CalendarDays, color: "bg-amber-50 text-amber-700" },
-        { label: "Active Properties", value: data.stats.activeProperties, detail: "Available inventory", icon: Home, color: "bg-emerald-50 text-emerald-700" },
+        { label: "Hot Leads", value: data.stats.hotLeads, detail: "Highest-priority opportunities", icon: Sparkles, color: "bg-rose-50 text-rose-700" },
+        { label: "Upcoming Follow-ups", value: data.stats.upcomingFollowUps, detail: "Pending next actions", icon: CheckCircle2, color: "bg-violet-50 text-violet-700" },
+        { label: "Appointments", value: data.stats.appointments, detail: "Workspace appointments", icon: CalendarDays, color: "bg-amber-50 text-amber-700" },
+        { label: "Properties", value: data.stats.activeProperties, detail: "Available inventory", icon: Home, color: "bg-emerald-50 text-emerald-700" },
+        { label: "Conversion Rate", value: `${data.stats.conversionRate}%`, detail: "Won leads ÷ total leads", icon: BarChart3, color: "bg-cyan-50 text-cyan-700" },
       ].map(({ label, value, detail, icon: Icon, color }) => <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><div><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{value}</p></div><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${color}`}><Icon size={19} /></span></div><p className="mt-3 text-xs text-slate-400">{detail}</p></article>)} </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">

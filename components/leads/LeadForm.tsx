@@ -63,18 +63,18 @@ export function LeadForm({ lead, onSubmit, onCancel, isLoading = false }: LeadFo
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
-    if (!formData.name.trim()) newErrors.name = "Name is required"
+    if (!formData.name.trim()) newErrors.name = "Lead name is required."
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format"
+      newErrors.email = "Enter a valid email address (for example, name@company.com)."
     }
-    if (formData.budget && isNaN(Number(formData.budget))) {
-      newErrors.budget = "Budget must be a number"
+    if (formData.budget && (!Number.isFinite(Number(formData.budget)) || Number(formData.budget) < 0)) {
+      newErrors.budget = "Enter a budget of 0 or more using numbers only."
     }
-    if (formData.bedrooms && isNaN(Number(formData.bedrooms))) {
-      newErrors.bedrooms = "Bedrooms must be a number"
+    if (formData.bedrooms && (!Number.isInteger(Number(formData.bedrooms)) || Number(formData.bedrooms) < 0)) {
+      newErrors.bedrooms = "Bedrooms must be a whole number of 0 or more."
     }
-    if (formData.bathrooms && isNaN(Number(formData.bathrooms))) {
-      newErrors.bathrooms = "Bathrooms must be a number"
+    if (formData.bathrooms && (!Number.isInteger(Number(formData.bathrooms)) || Number(formData.bathrooms) < 0)) {
+      newErrors.bathrooms = "Bathrooms must be a whole number of 0 or more."
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -127,6 +127,7 @@ export function LeadForm({ lead, onSubmit, onCancel, isLoading = false }: LeadFo
           </div>
 
           <form onSubmit={handleSubmit} className="p-4 space-y-6">
+            {Object.keys(errors).length > 0 && <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert"><p className="font-medium">Please fix the highlighted fields before saving.</p><ul className="mt-1 list-inside list-disc text-xs">{Object.entries(errors).filter(([, message]) => message).map(([field, message]) => <li key={field}>{message}</li>)}</ul></div>}
             {/* Basic Info */}
             <div className="border-b pb-6">
               <h3 className="text-sm font-medium text-gray-900 mb-4">Basic Information</h3>
