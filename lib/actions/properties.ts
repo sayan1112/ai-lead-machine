@@ -1,7 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { getWorkspaceContext, safeError } from "@/lib/auth-context"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
@@ -19,7 +19,7 @@ const propertySchema = z.object({
   bathrooms: z.number().optional(),
   area: z.number().optional(),
   possessionStatus: z.string().optional(),
-  possessionDate: z.string().optional(),
+  possessionDate: z.string().nullable().optional(),
   amenities: z.string().optional(),
   description: z.string().optional(),
   images: z.string().optional(),
@@ -37,8 +37,8 @@ export async function getProperties(filters?: {
   limit?: number
 }) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { properties: [], total: 0, error: "Unauthorized" }
     }
 
@@ -47,7 +47,7 @@ export async function getProperties(filters?: {
     const skip = (page - 1) * limit
 
     const where: any = {
-      organizationId: session.user.organizationId,
+      organizationId: context.organizationId,
     }
 
     if (filters?.status && filters.status !== "ALL") {
@@ -59,7 +59,7 @@ export async function getProperties(filters?: {
     }
 
     if (filters?.location) {
-      where.location = { contains: filters.location, mode: "insensitive" }
+      where.location = { contains: filters.location }
     }
 
     if (filters?.minPrice || filters?.maxPrice) {
@@ -70,10 +70,10 @@ export async function getProperties(filters?: {
 
     if (filters?.search) {
       where.OR = [
-        { name: { contains: filters.search, mode: "insensitive" } },
-        { projectName: { contains: filters.search, mode: "insensitive" } },
-        { location: { contains: filters.search, mode: "insensitive" } },
-        { address: { contains: filters.search, mode: "insensitive" } },
+        { name: { contains: filters.search } },
+        { projectName: { contains: filters.search } },
+        { location: { contains: filters.search } },
+        { address: { contains: filters.search } },
       ]
     }
 
@@ -101,15 +101,15 @@ export async function getProperties(filters?: {
 
 export async function getPropertyById(id: string) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { property: null, error: "Unauthorized" }
     }
 
     const property = await prisma.property.findFirst({
       where: {
         id,
-        organizationId: session.user.organizationId,
+        organizationId: context.organizationId,
       },
       include: {
         appointments: {
@@ -137,8 +137,8 @@ export async function getPropertyById(id: string) {
 
 export async function createProperty(data: z.infer<typeof propertySchema>) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { property: null, error: "Unauthorized" }
     }
 
@@ -151,59 +151,64 @@ export async function createProperty(data: z.infer<typeof propertySchema>) {
         amenities: validated.amenities || null,
         description: validated.description || null,
         images: validated.images || null,
-        organizationId: session.user.organizationId,
+        organizationId: context.organizationId,
       },
     })
 
+    await prisma.activity.create({ data: { type: "PROPERTY_ADDED", description: `Property "${property.name}" was added`, organizationId: context.organizationId, userId: context.userId } })
+    revalidatePath("/dashboard")
     revalidatePath("/dashboard/properties")
     return { property }
-  } catch (error) {
-    console.error("Error creating property:", error)
-    return { property: null, error: "Failed to create property" }
+    } catch (error) {
+      console.error("Error creating property:", error)
+    return { property: null, error: safeError(error, "Unable to create this property right now.") }
   }
 }
 
 export async function updateProperty(id: string, data: Partial<z.infer<typeof propertySchema>>) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { property: null, error: "Unauthorized" }
     }
 
     const existing = await prisma.property.findFirst({
-      where: { id, organizationId: session.user.organizationId },
+      where: { id, organizationId: context.organizationId },
     })
 
     if (!existing) {
       return { property: null, error: "Property not found" }
     }
 
-    const updateData: any = { ...data }
-    if (data.possessionDate) updateData.possessionDate = new Date(data.possessionDate)
+    const validated = propertySchema.partial().parse(data)
+    const updateData: any = { ...validated }
+    if (validated.possessionDate) updateData.possessionDate = new Date(validated.possessionDate)
 
     const property = await prisma.property.update({
       where: { id },
       data: updateData,
     })
 
+    await prisma.activity.create({ data: { type: validated.status === "SOLD" && existing.status !== "SOLD" ? "PROPERTY_SOLD" : "PROPERTY_UPDATED", description: `Property "${property.name}" was updated`, organizationId: context.organizationId, userId: context.userId } })
+    revalidatePath("/dashboard")
     revalidatePath("/dashboard/properties")
     revalidatePath(`/dashboard/properties/${id}`)
     return { property }
-  } catch (error) {
-    console.error("Error updating property:", error)
-    return { property: null, error: "Failed to update property" }
+    } catch (error) {
+      console.error("Error updating property:", error)
+    return { property: null, error: safeError(error, "Unable to update this property right now.") }
   }
 }
 
 export async function deleteProperty(id: string) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { success: false, error: "Unauthorized" }
     }
 
     const property = await prisma.property.findFirst({
-      where: { id, organizationId: session.user.organizationId },
+      where: { id, organizationId: context.organizationId },
     })
 
     if (!property) {
@@ -214,6 +219,7 @@ export async function deleteProperty(id: string) {
       where: { id },
     })
 
+    revalidatePath("/dashboard")
     revalidatePath("/dashboard/properties")
     return { success: true }
   } catch (error) {

@@ -216,7 +216,7 @@ export default function LoginPage() {
                     {isCheckingSession ? <><LoaderCircle size={17} className="animate-spin" /> Checking your secure session...</> : isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Signing you in...</> : <>Sign In <ArrowRight size={17} /></>}
                   </button>
                 </form>
-                <p className="mt-7 text-center text-sm text-slate-500">New to AI Lead Machine? <Link href="/" className="font-semibold text-emerald-700 hover:text-emerald-800">Create your workspace</Link></p>
+                <p className="mt-7 text-center text-sm text-slate-500">New to AI Lead Machine? <Link href="/signup" className="font-semibold text-emerald-700 hover:text-emerald-800">Create your workspace</Link></p>
               </div>
             </div>
             <p className="mt-5 text-center text-xs leading-5 text-slate-500">By continuing, you agree to use this workspace responsibly and keep your account secure.</p>

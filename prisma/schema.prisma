@@ -91,8 +91,12 @@ model Organization {
   members       OrganizationMember[]
   users         User[]
   leads         Lead[]
+  leadScores    LeadScore[]
+  conversations Conversation[]
+  messages      Message[]
   properties    Property[]
   appointments  Appointment[]
+  followUps     FollowUp[]
   aiConfigs     AIConfig[]
   integrations  Integration[]
   followUpSequences FollowUpSequence[]
@@ -134,6 +138,9 @@ model Lead {
   timeline       String?  // 3 months, 6 months, 1 year, flexible
   possession     String?  // Ready to move, Under construction
   intent         String?  // high, medium, low
+  possessionPreference String?
+  score           Int      @default(0)
+  classification  String   @default("COLD") // HOT, WARM, COLD
   
   // Additional Info
   notes          String?
@@ -158,14 +165,16 @@ model Lead {
   activities     Activity[]
 
   @@index([organizationId])
-  @@index([status])
-  @@index([source])
+  @@index([organizationId, status])
+  @@index([organizationId, source])
+  @@index([organizationId, createdAt])
   @@map("leads")
 }
 
 model LeadScore {
   id                   String   @id @default(cuid())
   leadId               String
+  organizationId       String
   score                Int      @default(0) // 0-100
   classification       String   @default("COLD") // HOT, WARM, COLD
   
@@ -181,9 +190,11 @@ model LeadScore {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([leadId])
+  @@index([organizationId, createdAt])
   @@map("lead_scores")
 }
 
@@ -191,6 +202,7 @@ model LeadScore {
 model Conversation {
   id             String   @id @default(cuid())
   leadId         String
+  organizationId String
   channel        String   @default("WEB") // WEB, WHATSAPP, INSTAGRAM, EMAIL
   status         String   @default("ACTIVE") // ACTIVE, CLOSED, PENDING
   
@@ -200,16 +212,19 @@ model Conversation {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  messages    Message[]
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages     Message[]
 
   @@index([leadId])
+  @@index([organizationId, updatedAt])
   @@map("conversations")
 }
 
 model Message {
   id             String   @id @default(cuid())
   conversationId String
+  organizationId String
   role           String   // USER, ASSISTANT, SYSTEM
   content        String
   
@@ -219,8 +234,10 @@ model Message {
   createdAt      DateTime @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
+  @@index([organizationId, createdAt])
   @@map("messages")
 }
 
@@ -334,6 +351,7 @@ model FollowUpStep {
 model FollowUp {
   id              String   @id @default(cuid())
   leadId          String
+  organizationId  String
   stepId          String?
   scheduledAt     DateTime
   executedAt      DateTime?
@@ -343,10 +361,11 @@ model FollowUp {
   
   createdAt       DateTime @default(now())
 
-  lead            Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead            Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([leadId])
-  @@index([scheduledAt])
+  @@index([organizationId, scheduledAt])
   @@map("follow_ups")
 }
 

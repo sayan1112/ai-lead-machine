@@ -1,16 +1,16 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
+import { getWorkspaceContext, safeError } from "@/lib/auth-context"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
 const appointmentSchema = z.object({
   leadId: z.string().min(1, "Lead is required"),
   propertyId: z.string().optional(),
-  date: z.string().min(1, "Date is required"),
-  duration: z.number().min(15).default(60),
-  notes: z.string().optional(),
+  date: z.string().min(1, "Date is required").refine((value) => !Number.isNaN(new Date(value).getTime()), "Enter a valid date and time"),
+  duration: z.number().int().min(15).max(480).default(60),
+  notes: z.string().trim().max(4_000).optional(),
 })
 
 export async function getAppointments(filters?: {
@@ -23,8 +23,8 @@ export async function getAppointments(filters?: {
   limit?: number
 }) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { appointments: [], total: 0, error: "Unauthorized" }
     }
 
@@ -33,7 +33,7 @@ export async function getAppointments(filters?: {
     const skip = (page - 1) * limit
 
     const where: any = {
-      organizationId: session.user.organizationId,
+      organizationId: context.organizationId,
     }
 
     if (filters?.status && filters.status !== "ALL") {
@@ -88,15 +88,15 @@ export async function getAppointments(filters?: {
 
 export async function getAppointmentById(id: string) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { appointment: null, error: "Unauthorized" }
     }
 
     const appointment = await prisma.appointment.findFirst({
       where: {
         id,
-        organizationId: session.user.organizationId,
+        organizationId: context.organizationId,
       },
       include: {
         lead: true,
@@ -120,8 +120,8 @@ export async function getAppointmentById(id: string) {
 
 export async function createAppointment(data: z.infer<typeof appointmentSchema>) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { appointment: null, error: "Unauthorized" }
     }
 
@@ -131,7 +131,7 @@ export async function createAppointment(data: z.infer<typeof appointmentSchema>)
     const lead = await prisma.lead.findFirst({
       where: {
         id: validated.leadId,
-        organizationId: session.user.organizationId,
+        organizationId: context.organizationId,
       },
     })
 
@@ -144,7 +144,7 @@ export async function createAppointment(data: z.infer<typeof appointmentSchema>)
       const property = await prisma.property.findFirst({
         where: {
           id: validated.propertyId,
-          organizationId: session.user.organizationId,
+          organizationId: context.organizationId,
         },
       })
 
@@ -160,8 +160,8 @@ export async function createAppointment(data: z.infer<typeof appointmentSchema>)
         date: new Date(validated.date),
         duration: validated.duration,
         notes: validated.notes || null,
-        organizationId: session.user.organizationId,
-        assignedToId: session.user.id,
+        organizationId: context.organizationId,
+        assignedToId: context.userId,
       },
       include: {
         lead: true,
@@ -180,29 +180,31 @@ export async function createAppointment(data: z.infer<typeof appointmentSchema>)
       data: {
         type: "APPOINTMENT_CREATED",
         description: `Appointment scheduled with ${lead.name}`,
-        organizationId: session.user.organizationId,
+        organizationId: context.organizationId,
         leadId: lead.id,
-        userId: session.user.id,
+        userId: context.userId,
       },
     })
 
+    revalidatePath("/dashboard")
     revalidatePath("/dashboard/appointments")
+    revalidatePath(`/dashboard/leads/${lead.id}`)
     return { appointment }
-  } catch (error) {
-    console.error("Error creating appointment:", error)
-    return { appointment: null, error: "Failed to create appointment" }
+    } catch (error) {
+      console.error("Error creating appointment:", error)
+    return { appointment: null, error: safeError(error, "Unable to schedule this appointment right now.") }
   }
 }
 
 export async function updateAppointment(id: string, data: Partial<z.infer<typeof appointmentSchema>> & { status?: string }) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { appointment: null, error: "Unauthorized" }
     }
 
     const existing = await prisma.appointment.findFirst({
-      where: { id, organizationId: session.user.organizationId },
+      where: { id, organizationId: context.organizationId },
     })
 
     if (!existing) {
@@ -232,30 +234,35 @@ export async function updateAppointment(id: string, data: Partial<z.infer<typeof
         data: {
           type: "APPOINTMENT_STATUS_CHANGED",
           description: `Appointment status changed to ${data.status}`,
-          organizationId: session.user.organizationId,
+          organizationId: context.organizationId,
           leadId: existing.leadId,
-          userId: session.user.id,
+          userId: context.userId,
         },
       })
+      if (["COMPLETED", "CANCELLED", "NO_SHOW"].includes(data.status)) {
+        await prisma.followUp.updateMany({ where: { leadId: existing.leadId, organizationId: context.organizationId, status: "PENDING" }, data: { status: "FAILED", message: "Stopped because the appointment reached a terminal state." } })
+      }
     }
 
+    revalidatePath("/dashboard")
     revalidatePath("/dashboard/appointments")
+    revalidatePath(`/dashboard/leads/${existing.leadId}`)
     return { appointment }
-  } catch (error) {
-    console.error("Error updating appointment:", error)
-    return { appointment: null, error: "Failed to update appointment" }
+    } catch (error) {
+      console.error("Error updating appointment:", error)
+    return { appointment: null, error: safeError(error, "Unable to update this appointment right now.") }
   }
 }
 
 export async function deleteAppointment(id: string) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { success: false, error: "Unauthorized" }
     }
 
     const appointment = await prisma.appointment.findFirst({
-      where: { id, organizationId: session.user.organizationId },
+      where: { id, organizationId: context.organizationId },
     })
 
     if (!appointment) {
@@ -276,8 +283,8 @@ export async function deleteAppointment(id: string) {
 
 export async function getUpcomingAppointments(days: number = 7) {
   try {
-    const session = await auth()
-    if (!session?.user?.organizationId) {
+    const context = await getWorkspaceContext()
+    if (!context) {
       return { appointments: [], error: "Unauthorized" }
     }
 
@@ -287,7 +294,7 @@ export async function getUpcomingAppointments(days: number = 7) {
 
     const appointments = await prisma.appointment.findMany({
       where: {
-        organizationId: session.user.organizationId,
+        organizationId: context.organizationId,
         date: {
           gte: now,
           lte: endDate,

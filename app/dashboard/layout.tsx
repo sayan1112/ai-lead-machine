@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { BarChart3, Building2, CalendarDays, LayoutDashboard, Settings, Sparkles, Users } from "lucide-react";
+import { auth } from "@/lib/auth";
+import { logout } from "@/lib/actions/session";
 import "@/app/globals.css";
 
 export const metadata = {
@@ -15,7 +17,10 @@ const navigation = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+  const displayName = session?.user?.name || session?.user?.email || "Workspace member";
+  const initials = displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-900">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-[#07111f] text-white lg:flex">
@@ -30,7 +35,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 px-6 py-4 backdrop-blur lg:px-10"><div className="flex items-center justify-between"><Link href="/" className="flex items-center gap-2 text-sm font-semibold lg:hidden"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400 text-[#07111f]"><Sparkles size={16} /></span>AI Lead Machine</Link><div className="hidden text-sm text-slate-500 lg:block">Real estate sales workspace</div><div className="flex items-center gap-3"><span className="hidden text-xs text-slate-500 sm:block">Demo workspace</span><div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#07111f] text-xs font-bold text-white">AM</div></div></div><nav className="mt-4 flex gap-2 overflow-x-auto lg:hidden" aria-label="Mobile workspace navigation">{navigation.map(({ href, label }) => <Link key={href} href={href} className="whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-emerald-300 hover:text-emerald-700">{label}</Link>)}</nav></header>
+        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 px-6 py-4 backdrop-blur lg:px-10"><div className="flex items-center justify-between"><Link href="/" className="flex items-center gap-2 text-sm font-semibold lg:hidden"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400 text-[#07111f]"><Sparkles size={16} /></span>AI Lead Machine</Link><div className="hidden text-sm text-slate-500 lg:block">Real estate sales workspace</div><div className="flex items-center gap-3"><span className="hidden max-w-56 truncate text-xs text-slate-500 sm:block">{session?.user?.organization?.name || "Workspace"}</span><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#07111f] text-xs font-bold text-white" title={displayName}>{initials}</span><form action={logout}><button type="submit" className="text-xs font-semibold text-slate-500 transition hover:text-red-600">Sign out</button></form></div></div><nav className="mt-4 flex gap-2 overflow-x-auto lg:hidden" aria-label="Mobile workspace navigation">{navigation.map(({ href, label }) => <Link key={href} href={href} className="whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-emerald-300 hover:text-emerald-700">{label}</Link>)}</nav></header>
         <main className="min-h-[calc(100vh-73px)] p-5 sm:p-7 lg:p-10">{children}</main>
       </div>
     </div>

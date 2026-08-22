@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs"
 import { z } from "zod"
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8),
 })
 
@@ -15,6 +15,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: "/login",
   },
   trustHost: true,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -37,10 +38,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email },
-          include: { organization: true },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            password: true,
+            organizationId: true,
+            organization: { select: { id: true, name: true, slug: true } },
+            organizationMemberships: { select: { organizationId: true } },
+          },
         })
 
-        if (!user || !user.password) {
+        if (!user || !user.password || !user.organization || user.organizationMemberships.length === 0) {
           return null
         }
 
