@@ -180,7 +180,17 @@ export async function deleteLead(id: string) {
     if (!context) return { success: false, error: "Unauthorized" }
     const lead = await prisma.lead.findFirst({ where: { id, organizationId: context.organizationId }, select: { id: true } })
     if (!lead) return { success: false, error: "Lead not found" }
-    await prisma.lead.delete({ where: { id } })
+    await prisma.$transaction(async (tx) => {
+      // Keep deletion reliable across existing PostgreSQL databases whose
+      // foreign-key cascade rules may predate the current Prisma schema.
+      await tx.message.deleteMany({ where: { conversation: { leadId: id } } })
+      await tx.conversation.deleteMany({ where: { leadId: id } })
+      await tx.leadScore.deleteMany({ where: { leadId: id } })
+      await tx.followUp.deleteMany({ where: { leadId: id } })
+      await tx.appointment.deleteMany({ where: { leadId: id, organizationId: context.organizationId } })
+      await tx.activity.deleteMany({ where: { leadId: id, organizationId: context.organizationId } })
+      await tx.lead.delete({ where: { id } })
+    })
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/leads")
     return { success: true }
