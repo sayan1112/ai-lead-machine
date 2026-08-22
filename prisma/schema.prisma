@@ -122,8 +122,8 @@ model Lead {
   name           String
   email          String?
   phone          String?
-  source         String   @default("MANUAL") // WEBSITE, WHATSAPP, INSTAGRAM, FACEBOOK, GOOGLE_ADS, MANUAL, IMPORT, OTHER
-  status         String   @default("NEW") // NEW, CONTACTED, QUALIFIED, HOT, WARM, COLD, APPOINTMENT, CONVERTED, LOST
+  source         String   @default("MANUAL") // WEBSITE, WHATSAPP, INSTAGRAM, FACEBOOK, GOOGLE_ADS, PROPERTY_PORTAL, REFERRAL, DIRECT_ENQUIRY, MANUAL, IMPORT, OTHER
+  status         String   @default("NEW") // NEW, CONTACTED, QUALIFIED, APPOINTMENT, NEGOTIATION, WON, LOST
   
   // Property Requirements
   propertyType   String?  // Apartment, Villa, Plot, Commercial
@@ -229,8 +229,8 @@ model Property {
   id              String   @id @default(cuid())
   name            String
   projectName     String?
-  type            String   // Apartment, Villa, Plot, Commercial
-  status          String   @default("AVAILABLE") // AVAILABLE, SOLD, RESERVED
+  type            String   // Apartment, Villa, Plot, Commercial, Office, Retail
+  status          String   @default("AVAILABLE") // AVAILABLE, RESERVED, SOLD, OFF_MARKET
   
   // Location
   location        String

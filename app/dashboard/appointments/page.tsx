@@ -4,6 +4,11 @@ import { getAppointments, getUpcomingAppointments } from "@/lib/actions/appointm
 import { auth } from "@/lib/auth"
 import AppointmentsClient from "./AppointmentsClient"
 
+export const metadata = {
+  title: "Appointments | AI Lead Machine",
+  description: "Keep property visits, calls, and client meetings organized.",
+}
+
 async function AppointmentsContent() {
   const { appointments, total, error } = await getAppointments()
   const { appointments: upcoming } = await getUpcomingAppointments(7)

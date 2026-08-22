@@ -17,9 +17,6 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
-const demoEmail = "admin@example.com";
-const demoPassword = "admin123";
-
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -84,12 +81,6 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoAccount = () => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setError("");
-  };
-
   const isInitializing = !csrfToken && !error;
 
   return (
@@ -140,9 +131,8 @@ export default function LoginPage() {
               <div className="rounded-[21px] bg-[#f8fafc] px-6 py-8 text-slate-900 shadow-inner sm:px-9 sm:py-10">
                 <div className="mb-8">
                   <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#07111f] text-emerald-300 shadow-lg shadow-slate-900/10"><LockKeyhole size={20} /></div>
-                  <p className="text-sm font-semibold text-emerald-700">Welcome back</p>
-                  <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-950">Sign in to your workspace</h2>
-                  <p className="mt-3 text-sm leading-6 text-slate-500">Access your leads and keep every opportunity moving forward.</p>
+                  <p className="text-sm font-semibold text-emerald-700">Welcome back.</p>
+                  <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-950">Sign in to manage your real estate pipeline.</h2>
                 </div>
 
                 {error && (
@@ -209,15 +199,10 @@ export default function LoginPage() {
                     disabled={isLoading || isInitializing}
                     className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#07111f] px-4 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:-translate-y-0.5 hover:bg-[#10243a] hover:shadow-xl disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60"
                   >
-                    {isInitializing ? <><LoaderCircle size={17} className="animate-spin" /> Preparing secure sign-in...</> : isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Signing you in...</> : <>Sign in securely <ArrowRight size={17} /></>}
+                    {isInitializing ? <><LoaderCircle size={17} className="animate-spin" /> Preparing secure sign-in...</> : isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Signing you in...</> : <>Sign In <ArrowRight size={17} /></>}
                   </button>
                 </form>
-
-                <div className="my-7 flex items-center gap-3 text-[11px] uppercase tracking-[0.15em] text-slate-400"><span className="h-px flex-1 bg-slate-200" />Demo access<span className="h-px flex-1 bg-slate-200" /></div>
-                <button type="button" onClick={fillDemoAccount} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50/50">
-                  <span className="flex items-center justify-between"><span className="text-sm font-semibold text-slate-800">Use demo workspace</span><ArrowRight size={16} className="text-emerald-600" /></span>
-                  <span className="mt-1 block text-xs text-slate-500">admin@example.com · ready for a quick tour</span>
-                </button>
+                <p className="mt-7 text-center text-sm text-slate-500">Don&apos;t have an account? <Link href="/" className="font-semibold text-emerald-700 hover:text-emerald-800">Get started</Link></p>
               </div>
             </div>
             <p className="mt-5 text-center text-xs leading-5 text-slate-500">By continuing, you agree to use this workspace responsibly and keep your account secure.</p>

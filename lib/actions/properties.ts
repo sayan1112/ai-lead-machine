@@ -8,8 +8,8 @@ import { z } from "zod"
 const propertySchema = z.object({
   name: z.string().min(1, "Property name is required"),
   projectName: z.string().optional(),
-  type: z.enum(["Apartment", "Villa", "Plot", "Commercial"]),
-  status: z.enum(["AVAILABLE", "SOLD", "RESERVED"]).default("AVAILABLE"),
+  type: z.enum(["Apartment", "Villa", "Plot", "Commercial", "Office", "Retail"]),
+  status: z.enum(["AVAILABLE", "RESERVED", "SOLD", "OFF_MARKET"]).default("AVAILABLE"),
   location: z.string().min(1, "Location is required"),
   address: z.string().optional(),
   city: z.string().optional(),

@@ -4,6 +4,11 @@ import { getProperties } from "@/lib/actions/properties"
 import { auth } from "@/lib/auth"
 import PropertiesClient from "./PropertiesClient"
 
+export const metadata = {
+  title: "Properties | AI Lead Machine",
+  description: "Manage your property inventory and connect opportunities to the right listings.",
+}
+
 async function PropertiesContent() {
   const { properties, total, error } = await getProperties()
 

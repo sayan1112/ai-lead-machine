@@ -12,12 +12,13 @@ interface LeadFormProps {
   isLoading?: boolean
 }
 
-const SOURCES = ["WEBSITE", "WHATSAPP", "INSTAGRAM", "FACEBOOK", "GOOGLE_ADS", "MANUAL", "IMPORT", "OTHER"]
-const STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "HOT", "WARM", "COLD", "APPOINTMENT", "CONVERTED", "LOST"]
+const SOURCES = ["WEBSITE", "WHATSAPP", "INSTAGRAM", "FACEBOOK", "GOOGLE_ADS", "PROPERTY_PORTAL", "REFERRAL", "DIRECT_ENQUIRY", "MANUAL", "IMPORT", "OTHER"]
+const STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "APPOINTMENT", "NEGOTIATION", "WON", "LOST"]
 const PROPERTY_TYPES = ["Apartment", "Villa", "Plot", "Commercial"]
 const TIMELINES = ["3 months", "6 months", "1 year", "flexible"]
 const POSSESSIONS = ["Ready to move", "Under construction"]
 const INTENTS = ["high", "medium", "low"]
+const labelFor = (value: string) => value.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ")
 
 export function LeadForm({ lead, onSubmit, onCancel, isLoading = false }: LeadFormProps) {
   const [formData, setFormData] = useState({
@@ -131,7 +132,7 @@ export function LeadForm({ lead, onSubmit, onCancel, isLoading = false }: LeadFo
               <h3 className="text-sm font-medium text-gray-900 mb-4">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lead name *</label>
                   <input
                     type="text"
                     name="name"
@@ -153,7 +154,7 @@ export function LeadForm({ lead, onSubmit, onCancel, isLoading = false }: LeadFo
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {SOURCES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s} value={s}>{labelFor(s)}</option>
                     ))}
                   </select>
                 </div>
@@ -189,7 +190,7 @@ export function LeadForm({ lead, onSubmit, onCancel, isLoading = false }: LeadFo
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {STATUSES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s} value={s}>{labelFor(s)}</option>
                     ))}
                   </select>
                 </div>
@@ -251,7 +252,7 @@ export function LeadForm({ lead, onSubmit, onCancel, isLoading = false }: LeadFo
                   {errors.bathrooms && <p className="mt-1 text-sm text-red-600">{errors.bathrooms}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Budget (INR)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Budget (₹)</label>
                   <input
                     type="number"
                     name="budget"

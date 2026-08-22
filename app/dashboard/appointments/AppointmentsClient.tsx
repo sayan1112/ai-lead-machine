@@ -77,16 +77,21 @@ export default function AppointmentsClient({ initialAppointments, initialTotal, 
 
   return (
     <>
+      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">Client activity</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-950">Appointments</h1><p className="mt-2 text-sm text-slate-500">Keep property visits, calls, and client meetings organized.</p></div>
+        <button onClick={handleCreate} className="w-fit rounded-xl bg-[#07111f] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-[#10243a]">+ Schedule Appointment</button>
+      </div>
+      <div className="mb-6 flex flex-wrap gap-2 text-xs font-medium text-slate-600"><span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Property Visit</span><span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Client Call</span><span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Site Visit</span><span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Consultation</span><span className="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Follow-Up Meeting</span></div>
       {/* Upcoming Appointments */}
       {upcoming.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="font-medium text-blue-900 mb-3">Upcoming This Week</h3>
+        <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
+          <h3 className="mb-3 font-semibold text-emerald-950">Upcoming This Week</h3>
           <div className="space-y-2">
             {upcoming.slice(0, 3).map((apt: any) => (
               <div key={apt.id} className="flex items-center justify-between bg-white p-3 rounded">
                 <div>
-                  <p className="font-medium">{apt.lead.name}</p>
-                  <p className="text-sm text-gray-500">
+                <p className="font-medium text-slate-900">{apt.lead.name}</p>
+                <p className="text-sm text-slate-500">
                     {new Date(apt.date).toLocaleString()} • {apt.duration} min
                   </p>
                 </div>
@@ -97,12 +102,7 @@ export default function AppointmentsClient({ initialAppointments, initialTotal, 
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-gray-600">Showing {appointments.length} of {total} appointments</p>
-        <button onClick={handleCreate} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-          Schedule Appointment
-        </button>
-      </div>
+      <p className="mb-4 text-sm text-slate-500">Showing {appointments.length} of {total} scheduled activities</p>
 
       <Suspense fallback={<div className="animate-pulse space-y-4"><div className="h-64 bg-gray-100 rounded-lg" /></div>}>
         <AppointmentsTable appointments={appointments} onEdit={handleEdit} onDelete={handleDelete} />
@@ -130,8 +130,8 @@ function AppointmentsTable({ appointments, onEdit, onDelete }: { appointments: a
         <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900">No appointments found</h3>
-        <p className="mt-1 text-sm text-gray-500">Get started by scheduling a new appointment.</p>
+        <h3 className="mt-2 text-sm font-medium text-gray-900">No appointments yet</h3>
+        <p className="mt-1 text-sm text-gray-500">Schedule a property visit, consultation, or follow-up to keep opportunities moving.</p>
       </div>
     )
   }
@@ -247,14 +247,14 @@ function AppointmentForm({ appointment, onSubmit, onCancel, isLoading = false }:
           <form onSubmit={handleSubmitForm} className="p-4 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lead *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Prospect *</label>
                 <select name="leadId" value={formData.leadId} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Select lead...</option>
                   {leads.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.email || l.phone})</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property listing</label>
                 <select name="propertyId" value={formData.propertyId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">None</option>
                   {properties.map((p) => <option key={p.id} value={p.id}>{p.name} - {p.location}</option>)}
@@ -270,8 +270,8 @@ function AppointmentForm({ appointment, onSubmit, onCancel, isLoading = false }:
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-              <textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Meeting notes</label>
+              <textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} placeholder="Add the appointment type, client requirements, or preparation notes" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             {appointment && (
               <div>

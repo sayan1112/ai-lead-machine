@@ -4,6 +4,11 @@ import { getLeads } from "@/lib/actions/leads"
 import { auth } from "@/lib/auth"
 import LeadsClient from "./LeadsClient"
 
+export const metadata = {
+  title: "Leads | AI Lead Machine",
+  description: "Manage, qualify, and convert every property enquiry from one place.",
+}
+
 async function LeadsContent() {
   const { leads, total, error } = await getLeads()
 
