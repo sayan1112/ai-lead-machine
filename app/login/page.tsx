@@ -90,6 +90,8 @@ export default function LoginPage() {
     setError("");
   };
 
+  const isInitializing = !csrfToken && !error;
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#07111f] text-white">
       <div className="pointer-events-none absolute -left-48 -top-48 h-[520px] w-[520px] rounded-full bg-emerald-400/10 blur-3xl" />
@@ -144,7 +146,7 @@ export default function LoginPage() {
                 </div>
 
                 {error && (
-                  <div role="alert" aria-live="polite" className="mb-5 flex gap-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
+                  <div id="login-error" role="alert" aria-live="polite" className="mb-5 flex gap-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
                     <TriangleAlert size={17} className="mt-0.5 shrink-0" />
                     <p>{error}</p>
                   </div>
@@ -163,6 +165,9 @@ export default function LoginPage() {
                       placeholder="you@company.com"
                       required
                       disabled={isLoading}
+                      spellCheck={false}
+                      aria-invalid={Boolean(error)}
+                      aria-describedby={error ? "login-error" : undefined}
                       className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 disabled:cursor-not-allowed disabled:bg-slate-100"
                     />
                   </div>
@@ -184,6 +189,8 @@ export default function LoginPage() {
                         minLength={8}
                         required
                         disabled={isLoading}
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={error ? "login-error" : undefined}
                         className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 disabled:cursor-not-allowed disabled:bg-slate-100"
                       />
                       <button
@@ -199,13 +206,11 @@ export default function LoginPage() {
 
                   <button
                     type="submit"
-                    disabled={isLoading || !csrfToken}
+                    disabled={isLoading || isInitializing}
                     className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#07111f] px-4 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:-translate-y-0.5 hover:bg-[#10243a] hover:shadow-xl disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60"
                   >
-                    {isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Signing you in...</> : <>Sign in securely <ArrowRight size={17} /></>}
+                    {isInitializing ? <><LoaderCircle size={17} className="animate-spin" /> Preparing secure sign-in...</> : isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Signing you in...</> : <>Sign in securely <ArrowRight size={17} /></>}
                   </button>
-
-                  {!csrfToken && !error && <p className="text-center text-xs text-slate-400">Preparing secure sign-in...</p>}
                 </form>
 
                 <div className="my-7 flex items-center gap-3 text-[11px] uppercase tracking-[0.15em] text-slate-400"><span className="h-px flex-1 bg-slate-200" />Demo access<span className="h-px flex-1 bg-slate-200" /></div>
