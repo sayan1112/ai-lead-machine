@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -31,10 +32,16 @@ export default function LoginPage() {
 
     getCsrfToken()
       .then((token) => {
-        if (isMounted && token) setCsrfToken(token);
+        if (!isMounted) return;
+        if (token) setCsrfToken(token);
+        else setError("Unable to sign in right now. Please refresh and try again.");
+        setIsCheckingSession(false);
       })
       .catch(() => {
-        if (isMounted) setError("We could not initialize secure sign-in. Please refresh and try again.");
+        if (isMounted) {
+          setError("Unable to sign in right now. Please refresh and try again.");
+          setIsCheckingSession(false);
+        }
       });
 
     return () => {
@@ -48,12 +55,19 @@ export default function LoginPage() {
 
     let token = csrfToken;
     if (!token) {
-      token = (await getCsrfToken()) || "";
-      if (token) setCsrfToken(token);
+      setIsCheckingSession(true);
+      try {
+        token = (await getCsrfToken()) || "";
+        if (token) setCsrfToken(token);
+      } catch {
+        setError("Unable to sign in right now. Please refresh and try again.");
+      } finally {
+        setIsCheckingSession(false);
+      }
     }
 
     if (!token) {
-      setError("Secure sign-in is not ready yet. Please refresh the page and try again.");
+      setError("Unable to sign in right now. Please refresh and try again.");
       return;
     }
 
@@ -68,7 +82,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("That email and password combination is not recognised. Please try again.");
+        setError("Unable to sign in. Please check your email and password.");
         return;
       }
 
@@ -80,8 +94,6 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-
-  const isInitializing = !csrfToken && !error;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#07111f] text-white">
@@ -104,19 +116,21 @@ export default function LoginPage() {
         <div className="grid flex-1 items-center gap-16 py-14 lg:grid-cols-[1fr_0.82fr] lg:gap-24 lg:py-20">
           <section className="hidden max-w-xl lg:block">
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3.5 py-2 text-xs font-medium text-emerald-200">
-              <ShieldCheck size={14} /> Your workspace is protected
+              <ShieldCheck size={14} /> AI Lead Machine
             </div>
-            <h1 className="max-w-lg text-5xl font-semibold leading-[1.06] tracking-[-0.04em] xl:text-6xl">
-              Turn your pipeline into your unfair advantage.
+            <p className="text-lg font-medium text-emerald-200">Your real estate pipeline, in one place.</p>
+            <h1 className="mt-4 max-w-lg text-5xl font-semibold leading-[1.06] tracking-[-0.04em] xl:text-6xl">
+              Turn every opportunity into your next closing.
             </h1>
             <p className="mt-7 max-w-md text-lg leading-8 text-slate-300">
-              Pick up exactly where your team left off. Every lead, conversation, and next step is ready when you are.
+              Sign in to manage leads, follow-ups, appointments, properties, and your sales pipeline from one intelligent workspace.
             </p>
             <div className="mt-10 space-y-4 text-sm text-slate-300">
               {[
                 "One clear view of every active opportunity",
-                "AI-powered prioritisation for your next follow-up",
-                "A calmer way to close more deals",
+                "AI-powered lead prioritisation",
+                "Organized follow-ups and appointments",
+                "Real-time visibility into your sales pipeline",
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-300/15 text-emerald-300"><Check size={13} strokeWidth={3} /></span>
@@ -131,8 +145,8 @@ export default function LoginPage() {
               <div className="rounded-[21px] bg-[#f8fafc] px-6 py-8 text-slate-900 shadow-inner sm:px-9 sm:py-10">
                 <div className="mb-8">
                   <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#07111f] text-emerald-300 shadow-lg shadow-slate-900/10"><LockKeyhole size={20} /></div>
-                  <p className="text-sm font-semibold text-emerald-700">Welcome back.</p>
-                  <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-950">Sign in to manage your real estate pipeline.</h2>
+                  <h2 className="text-3xl font-semibold tracking-[-0.03em] text-slate-950">Welcome back.</h2>
+                  <p className="mt-3 text-sm leading-6 text-slate-500">Sign in to continue managing your real estate pipeline.</p>
                 </div>
 
                 {error && (
@@ -196,13 +210,13 @@ export default function LoginPage() {
 
                   <button
                     type="submit"
-                    disabled={isLoading || isInitializing}
+                    disabled={isLoading || isCheckingSession}
                     className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#07111f] px-4 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:-translate-y-0.5 hover:bg-[#10243a] hover:shadow-xl disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60"
                   >
-                    {isInitializing ? <><LoaderCircle size={17} className="animate-spin" /> Preparing secure sign-in...</> : isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Signing you in...</> : <>Sign In <ArrowRight size={17} /></>}
+                    {isCheckingSession ? <><LoaderCircle size={17} className="animate-spin" /> Checking your secure session...</> : isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Signing you in...</> : <>Sign In <ArrowRight size={17} /></>}
                   </button>
                 </form>
-                <p className="mt-7 text-center text-sm text-slate-500">Don&apos;t have an account? <Link href="/" className="font-semibold text-emerald-700 hover:text-emerald-800">Get started</Link></p>
+                <p className="mt-7 text-center text-sm text-slate-500">New to AI Lead Machine? <Link href="/" className="font-semibold text-emerald-700 hover:text-emerald-800">Create your workspace</Link></p>
               </div>
             </div>
             <p className="mt-5 text-center text-xs leading-5 text-slate-500">By continuing, you agree to use this workspace responsibly and keep your account secure.</p>
@@ -211,7 +225,7 @@ export default function LoginPage() {
 
         <footer className="flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-500">
           <span>© {new Date().getFullYear()} AI Lead Machine</span>
-          <span className="inline-flex items-center gap-1.5"><ShieldCheck size={13} className="text-emerald-300" /> Secure workspace</span>
+          <span className="inline-flex items-center gap-1.5"><ShieldCheck size={13} className="text-emerald-300" /> Secure workspace · AI Lead Machine</span>
         </footer>
       </div>
     </main>
