@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { getCsrfToken, signIn } from "next-auth/react";
-import { useEffect, useState, type FormEvent } from "react";
+import { signIn } from "next-auth/react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -20,56 +20,14 @@ import {
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [csrfToken, setCsrfToken] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const router = useRouter();
-
-  useEffect(() => {
-    let isMounted = true;
-
-    getCsrfToken()
-      .then((token) => {
-        if (!isMounted) return;
-        if (token) setCsrfToken(token);
-        else setError("Unable to sign in right now. Please refresh and try again.");
-        setIsCheckingSession(false);
-      })
-      .catch(() => {
-        if (isMounted) {
-          setError("Unable to sign in right now. Please refresh and try again.");
-          setIsCheckingSession(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
-
-    let token = csrfToken;
-    if (!token) {
-      setIsCheckingSession(true);
-      try {
-        token = (await getCsrfToken()) || "";
-        if (token) setCsrfToken(token);
-      } catch {
-        setError("Unable to sign in right now. Please refresh and try again.");
-      } finally {
-        setIsCheckingSession(false);
-      }
-    }
-
-    if (!token) {
-      setError("Unable to sign in right now. Please refresh and try again.");
-      return;
-    }
 
     setIsLoading(true);
 
@@ -77,7 +35,6 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email,
         password,
-        csrfToken: token,
         redirect: false,
       });
 
@@ -210,10 +167,10 @@ export default function LoginPage() {
 
                   <button
                     type="submit"
-                    disabled={isLoading || isCheckingSession}
+                    disabled={isLoading}
                     className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#07111f] px-4 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:-translate-y-0.5 hover:bg-[#10243a] hover:shadow-xl disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60"
                   >
-                    {isCheckingSession ? <><LoaderCircle size={17} className="animate-spin" /> Checking your secure session...</> : isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Signing you in...</> : <>Sign In <ArrowRight size={17} /></>}
+                    {isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Signing you in...</> : <>Sign In <ArrowRight size={17} /></>}
                   </button>
                 </form>
                 <p className="mt-7 text-center text-sm text-slate-500">New to AI Lead Machine? <Link href="/signup" className="font-semibold text-emerald-700 hover:text-emerald-800">Create your workspace</Link></p>
