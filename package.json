@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "deploy:check": "node scripts/check-deploy-env.mjs --strict",
-    "build": "npm run deploy:check && prisma generate && next build --webpack",
+    "build": "npm run deploy:check && npm run migrate:deploy && prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "prisma:generate": "prisma generate",
