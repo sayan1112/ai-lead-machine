@@ -271,7 +271,7 @@ export async function updateAppointment(id: string, data: Partial<z.infer<typeof
   }
 }
 
-export async function deleteAppointment(id: string) {
+export async function removeAppointment(id: string) {
   try {
     const context = await getWorkspaceContext()
     if (!context) {

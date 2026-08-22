@@ -31,8 +31,8 @@ export default function AppointmentsClient({ initialAppointments, initialTotal, 
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this appointment?")) return
-    const { deleteAppointment } = await import("@/lib/actions/appointments")
-    const result = await deleteAppointment(id)
+    const { removeAppointment } = await import("@/lib/actions/appointments")
+    const result = await removeAppointment(id)
     if (result.error) {
       alert(result.error)
     } else {
