@@ -37,8 +37,8 @@ export default function LeadsClient({ initialLeads, initialTotal, initialError }
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this lead?")) return
-    const { deleteLead } = await import("@/lib/actions/leads")
-    const result = await deleteLead(id)
+    const { removeLead } = await import("@/lib/actions/leads")
+    const result = await removeLead(id)
     if (result.error) {
       alert(result.error)
     } else {

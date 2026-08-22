@@ -174,7 +174,7 @@ export async function updateLead(id: string, data: Partial<LeadInput>) {
   }
 }
 
-export async function deleteLead(id: string) {
+export async function removeLead(id: string) {
   try {
     const context = await getWorkspaceContext()
     if (!context) return { success: false, error: "Unauthorized" }
