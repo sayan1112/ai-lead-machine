@@ -1,100 +1,229 @@
 "use client";
 
-import { signIn, getCsrfToken } from "next-auth/react";
-import { useState, useEffect } from "react";
+import Link from "next/link";
+import { getCsrfToken, signIn } from "next-auth/react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Eye,
+  EyeOff,
+  LoaderCircle,
+  LockKeyhole,
+  ShieldCheck,
+  Sparkles,
+  TriangleAlert,
+} from "lucide-react";
+
+const demoEmail = "admin@example.com";
+const demoPassword = "admin123";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [csrfToken, setCsrfToken] = useState("");
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Fetch CSRF token on mount
-    getCsrfToken().then((token) => {
-      if (token) {
-        setCsrfToken(token);
-      }
-    });
+    let isMounted = true;
+
+    getCsrfToken()
+      .then((token) => {
+        if (isMounted && token) setCsrfToken(token);
+      })
+      .catch(() => {
+        if (isMounted) setError("We could not initialize secure sign-in. Please refresh and try again.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!csrfToken) {
-      // Wait for CSRF token if not yet loaded
-      const token = await getCsrfToken();
-      if (!token) {
-        setError("Unable to initialize login. Please refresh the page.");
-        return;
-      }
-      setCsrfToken(token);
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+
+    let token = csrfToken;
+    if (!token) {
+      token = (await getCsrfToken()) || "";
+      if (token) setCsrfToken(token);
+    }
+
+    if (!token) {
+      setError("Secure sign-in is not ready yet. Please refresh the page and try again.");
+      return;
     }
 
     setIsLoading(true);
-    setError("");
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      csrfToken,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        csrfToken: token,
+        redirect: false,
+      });
 
-    setIsLoading(false);
+      if (result?.error) {
+        setError("That email and password combination is not recognised. Please try again.");
+        return;
+      }
 
-    if (!result?.error) {
-      router.push("/dashboard");
+      router.replace("/dashboard");
       router.refresh();
-    } else {
-      setError("Invalid email or password");
+    } catch {
+      setError("Something went wrong while signing you in. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const fillDemoAccount = () => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setError("");
+  };
+
   return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
-      <form onSubmit={handleSubmit} style={{ maxWidth: "400px", width: "100%" }}>
-        <h1>Login</h1>
-        <div>
-          <label htmlFor="email">Email</label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={isLoading}
-            style={{ width: "100%" }}
-          />
+    <main className="relative min-h-screen overflow-hidden bg-[#07111f] text-white">
+      <div className="pointer-events-none absolute -left-48 -top-48 h-[520px] w-[520px] rounded-full bg-emerald-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-56 right-0 h-[620px] w-[620px] rounded-full bg-sky-500/[0.08] blur-3xl" />
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-6 lg:px-8">
+        <header className="flex items-center justify-between">
+          <Link href="/" className="group inline-flex items-center gap-3" aria-label="Back to AI Lead Machine home">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400 text-[#07111f] shadow-[0_0_28px_rgba(52,211,153,0.24)] transition-transform group-hover:scale-105">
+              <Sparkles size={19} strokeWidth={2.5} />
+            </span>
+            <span className="text-[15px] font-semibold tracking-tight sm:text-base">AI Lead Machine</span>
+          </Link>
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white">
+            <ArrowLeft size={15} /> Back to home
+          </Link>
+        </header>
+
+        <div className="grid flex-1 items-center gap-16 py-14 lg:grid-cols-[1fr_0.82fr] lg:gap-24 lg:py-20">
+          <section className="hidden max-w-xl lg:block">
+            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3.5 py-2 text-xs font-medium text-emerald-200">
+              <ShieldCheck size={14} /> Your workspace is protected
+            </div>
+            <h1 className="max-w-lg text-5xl font-semibold leading-[1.06] tracking-[-0.04em] xl:text-6xl">
+              Turn your pipeline into your unfair advantage.
+            </h1>
+            <p className="mt-7 max-w-md text-lg leading-8 text-slate-300">
+              Pick up exactly where your team left off. Every lead, conversation, and next step is ready when you are.
+            </p>
+            <div className="mt-10 space-y-4 text-sm text-slate-300">
+              {[
+                "One clear view of every active opportunity",
+                "AI-powered prioritisation for your next follow-up",
+                "A calmer way to close more deals",
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-300/15 text-emerald-300"><Check size={13} strokeWidth={3} /></span>
+                  {item}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="mx-auto w-full max-w-[460px]">
+            <div className="rounded-[28px] border border-white/10 bg-white/[0.055] p-2 shadow-2xl shadow-black/30 backdrop-blur-xl sm:p-3">
+              <div className="rounded-[21px] bg-[#f8fafc] px-6 py-8 text-slate-900 shadow-inner sm:px-9 sm:py-10">
+                <div className="mb-8">
+                  <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#07111f] text-emerald-300 shadow-lg shadow-slate-900/10"><LockKeyhole size={20} /></div>
+                  <p className="text-sm font-semibold text-emerald-700">Welcome back</p>
+                  <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-950">Sign in to your workspace</h2>
+                  <p className="mt-3 text-sm leading-6 text-slate-500">Access your leads and keep every opportunity moving forward.</p>
+                </div>
+
+                {error && (
+                  <div role="alert" aria-live="polite" className="mb-5 flex gap-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
+                    <TriangleAlert size={17} className="mt-0.5 shrink-0" />
+                    <p>{error}</p>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-700">Work email</label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="you@company.com"
+                      required
+                      disabled={isLoading}
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <label htmlFor="password" className="block text-sm font-medium text-slate-700">Password</label>
+                      <span className="text-xs text-slate-400">Min. 8 characters</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="Enter your password"
+                        minLength={8}
+                        required
+                        disabled={isLoading}
+                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 disabled:cursor-not-allowed disabled:bg-slate-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((visible) => !visible)}
+                        className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center text-slate-400 transition-colors hover:text-slate-700"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading || !csrfToken}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#07111f] px-4 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:-translate-y-0.5 hover:bg-[#10243a] hover:shadow-xl disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60"
+                  >
+                    {isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Signing you in...</> : <>Sign in securely <ArrowRight size={17} /></>}
+                  </button>
+
+                  {!csrfToken && !error && <p className="text-center text-xs text-slate-400">Preparing secure sign-in...</p>}
+                </form>
+
+                <div className="my-7 flex items-center gap-3 text-[11px] uppercase tracking-[0.15em] text-slate-400"><span className="h-px flex-1 bg-slate-200" />Demo access<span className="h-px flex-1 bg-slate-200" /></div>
+                <button type="button" onClick={fillDemoAccount} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50/50">
+                  <span className="flex items-center justify-between"><span className="text-sm font-semibold text-slate-800">Use demo workspace</span><ArrowRight size={16} className="text-emerald-600" /></span>
+                  <span className="mt-1 block text-xs text-slate-500">admin@example.com · ready for a quick tour</span>
+                </button>
+              </div>
+            </div>
+            <p className="mt-5 text-center text-xs leading-5 text-slate-500">By continuing, you agree to use this workspace responsibly and keep your account secure.</p>
+          </section>
         </div>
-        <div style={{ marginTop: "1rem" }}>
-          <label htmlFor="password">Password</label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={isLoading}
-            style={{ width: "100%" }}
-          />
-        </div>
-        <input type="hidden" name="csrfToken" value={csrfToken} />
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        <button 
-          type="submit" 
-          disabled={isLoading || !csrfToken}
-          style={{ width: "100%", marginTop: "1rem", opacity: isLoading || !csrfToken ? 0.7 : 1 }}
-        >
-          {isLoading ? "Logging in..." : "Login"}
-        </button>
-        <p style={{ fontSize: "0.75rem", color: "#666", marginTop: "1rem" }}>
-          Demo: admin@example.com / admin123
-        </p>
-      </form>
-    </div>
+
+        <footer className="flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-500">
+          <span>© {new Date().getFullYear()} AI Lead Machine</span>
+          <span className="inline-flex items-center gap-1.5"><ShieldCheck size={13} className="text-emerald-300" /> Secure workspace</span>
+        </footer>
+      </div>
+    </main>
   );
 }
