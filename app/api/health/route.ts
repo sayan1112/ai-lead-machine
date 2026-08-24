@@ -12,8 +12,13 @@ export async function GET() {
   try {
     await prisma.$queryRaw`SELECT 1`
     return NextResponse.json({ ok: true, database: "connected", connection: "postgresql" })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Health database check failed", error)
-    return NextResponse.json({ ok: false, database: "unavailable", connection: "postgresql" }, { status: 503 })
+    return NextResponse.json({ 
+      ok: false, 
+      database: "unavailable", 
+      connection: "postgresql",
+      error: error?.message || String(error)
+    }, { status: 503 })
   }
 }
