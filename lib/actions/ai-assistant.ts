@@ -80,20 +80,127 @@ export async function analyzeLead(leadId: string) {
   const result = await workspaceLead(leadId)
   if (!result.context) return { error: "Unauthorized" }
   if (!result.lead) return { error: "Lead not found in this workspace" }
-  const response = await processLeadMessage(result.context, leadId, `Analyze this real estate lead using only these workspace facts. Extract intent, urgency, propertyType, location, budget, bedrooms, timeline, buying or selling intent, qualification summary, and recommended next action.\n${facts(result.lead)}`)
-  if (!response.ok) return { error: response.error }
-  const urgency = response.extracted.timeline || response.extracted.intent === "HIGH" ? "High" : response.extracted.intent === "MEDIUM" ? "Medium" : "Unclear"
-  const buyingSellingIntent = response.extracted.intent ? "Buying" : "Not yet determined"
-  const qualificationSummary = response.score.score >= 60 ? "This lead has enough captured intent or requirements to move toward a direct sales conversation." : "More requirements are needed before this lead is fully qualified."
-  const recommendedNextAction = recommendation({ ...result.lead, score: response.score.score, propertyType: response.extracted.propertyType, location: response.extracted.location, budget: response.extracted.budget, timeline: response.extracted.timeline }, response.matches.length)
-  const analysis = { ...response.extracted, urgency, buyingSellingIntent, qualificationSummary, recommendedNextAction }
-  await prisma.$transaction([
-    prisma.conversation.update({ where: { id: response.conversationId }, data: { extractedData: JSON.stringify(analysis) } }),
-    prisma.activity.create({ data: { type: "AI_LEAD_ANALYZED", description: `AI analyzed ${result.lead.name}`, metadata: JSON.stringify(analysis), organizationId: result.context.organizationId, leadId, userId: result.context.userId } }),
-  ])
-  revalidatePath(`/dashboard/leads/${leadId}`)
-  revalidatePath("/dashboard/scoring")
-  return { analysis, matches: response.matches, score: response.score, assistantMessage: response.assistantMessage, aiUnavailable: response.aiUnavailable }
+  try {
+    const matches = await matchesForLead(result.context.organizationId, result.lead)
+    
+    // Build analysis prompt for AI
+    const analysisPrompt = `Analyze this real estate lead and provide a comprehensive sales intelligence report.
+
+LEAD DATA:
+${facts(result.lead)}
+
+MATCHING PROPERTIES: ${matches.length} available properties match the lead's requirements.
+
+Provide a JSON response with the following structure:
+{
+  "leadSummary": "string - 2-3 sentence executive summary",
+  "buyingIntentAssessment": "string - assessment of buying intent (HIGH/MEDIUM/LOW/UNCLEAR) with reasoning",
+  "keyRequirements": ["string array - bullet points of key requirements"],
+  "budgetFit": "string - analysis of budget fit with available inventory",
+  "timelineAssessment": "string - assessment of timeline and urgency",
+  "locationPropertyFit": "string - analysis of location and property type fit",
+  "leadStrengths": ["string array - strengths of this lead"],
+  "risksBlockers": ["string array - risks, blockers, or missing information"],
+  "recommendedNextAction": "string - specific, actionable next step",
+  "suggestedSalesStrategy": "string - recommended sales approach",
+  "priorityReasoning": "string - why this lead should be prioritized or deprioritized",
+  "urgency": "High|Medium|Low|Unclear",
+  "buyingSellingIntent": "Buying|Selling|Not yet determined"
+}
+
+IMPORTANT: Return ONLY valid JSON. Do not include any markdown formatting or explanatory text.`
+
+    const key = process.env.OPENAI_API_KEY
+    let analysis: any = null
+    let aiUnavailable = false
+
+    if (key) {
+      try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+          body: JSON.stringify({
+            model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+            temperature: 0.3,
+            messages: [
+              { role: "system", content: "You are an expert real estate sales analyst. Analyze leads and provide actionable sales intelligence. Return ONLY valid JSON matching the requested structure." },
+              { role: "user", content: analysisPrompt }
+            ]
+          }),
+          signal: AbortSignal.timeout(15_000)
+        })
+        const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> }
+        const content = payload.choices?.[0]?.message?.content?.trim()
+        if (content) {
+          try {
+            analysis = JSON.parse(content)
+          } catch {
+            console.error("Failed to parse AI analysis response:", content)
+          }
+        }
+      } catch (error) {
+        console.error("AI analysis request failed:", error)
+        aiUnavailable = true
+      }
+    } else {
+      aiUnavailable = true
+    }
+
+    // Fallback deterministic analysis if AI is unavailable
+    if (!analysis) {
+      const budget = result.lead.budget
+      const location = result.lead.location
+      const propertyType = result.lead.propertyType
+      const bedrooms = result.lead.bedrooms
+      const timeline = result.lead.timeline
+      const score = result.lead.score
+      const classification = result.lead.classification
+
+      const urgency = score >= 70 || (timeline && /immediate|urgent|asap|today|this week/i.test(timeline)) ? "High" : 
+                      score >= 50 ? "Medium" : "Unclear"
+      const buyingSellingIntent = result.lead.intent ? "Buying" : "Not yet determined"
+      
+      const requirements = [propertyType, bedrooms ? `${bedrooms} bedrooms` : null, location, budget ? `budget up to ₹${budget.toLocaleString("en-IN")}` : null, timeline ? `timeline: ${timeline}` : null].filter(Boolean)
+      const qualificationSummary = score >= 60 ? "This lead has enough captured intent or requirements to move toward a direct sales conversation." : "More requirements are needed before this lead is fully qualified."
+      const strengths = [budget ? "Budget is captured" : null, location ? "Location is captured" : null, propertyType || bedrooms ? "Property requirements are specific" : null, timeline ? "A buying timeline is available" : null, result.lead.email || result.lead.phone ? "Direct contact details are available" : null].filter(Boolean)
+      const risksBlockers = [matches.length ? null : "No currently available inventory matches all captured requirements", !budget ? "Budget is still unknown" : null, !location ? "Preferred location is still unknown" : null, !timeline ? "Buying timeline needs confirmation" : null].filter(Boolean)
+      
+      analysis = {
+        leadSummary: `${result.lead.name} is a ${classification.toLowerCase()} priority ${buyingSellingIntent.toLowerCase()} opportunity with a score of ${score}/100.`,
+        buyingIntentAssessment: score >= 70 ? "HIGH - Lead shows strong buying signals with captured requirements and high score" : 
+                                score >= 50 ? "MEDIUM - Lead has some requirements captured but needs more qualification" : 
+                                "LOW/UNCLEAR - Insufficient data to determine buying intent",
+        keyRequirements: requirements,
+        budgetFit: budget ? `${matches.length ? "Within the current matching inventory" : "No confirmed inventory fit yet"} at up to ₹${budget.toLocaleString("en-IN")}.` : "Budget fit cannot be assessed until a budget is captured.",
+        timelineAssessment: timeline ? `The stated timeline is ${timeline}; confirm the exact decision date and urgency.` : "Ask when the lead expects to make a decision.",
+        locationPropertyFit: matches.length ? `${matches.length} available ${propertyType || "property"} option${matches.length === 1 ? "" : "s"} match the captured requirements.` : "No available property currently matches the captured requirements.",
+        leadStrengths: strengths,
+        risksBlockers: risksBlockers,
+        recommendedNextAction: recommendation({ ...result.lead, score, propertyType, location, budget, timeline }, matches.length),
+        suggestedSalesStrategy: matches.length ? "Share the matched inventory, confirm the preferred option, and move directly to a viewing appointment." : "Close the missing requirement gaps first, then follow up with a targeted shortlist.",
+        priorityReasoning: `Lead score: ${score}/100 (${classification}). ${strengths.length} strengths identified. ${risksBlockers.length} risk factors present.`,
+        urgency,
+        buyingSellingIntent,
+      }
+    }
+
+    await prisma.activity.create({ 
+      data: { 
+        type: "AI_LEAD_ANALYZED", 
+        description: `AI analyzed ${result.lead.name}`, 
+        metadata: JSON.stringify(analysis), 
+        organizationId: result.context.organizationId, 
+        leadId, 
+        userId: result.context.userId 
+      } 
+    })
+    revalidatePath(`/dashboard/leads/${leadId}`)
+    revalidatePath("/dashboard/scoring")
+    return { analysis, matches, score: { score: result.lead.score, classification: result.lead.classification, reasons: [] }, aiUnavailable }
+  } catch (error) {
+    console.error("Analyze Lead failed", { leadId, organizationId: result.context.organizationId, error })
+    return { error: "Unable to analyze this lead right now. Please try again." }
+  }
 }
 
 export async function generateSalesReply(leadId: string) {
@@ -102,7 +209,7 @@ export async function generateSalesReply(leadId: string) {
   if (!result.lead) return { error: "Lead not found in this workspace" }
   const matches = await matchesForLead(result.context.organizationId, result.lead)
   const key = process.env.OPENAI_API_KEY
-  let reply = `Hi ${result.lead.name}, based on your requirement${result.lead.bedrooms ? ` for a ${result.lead.bedrooms} BHK` : ""}${result.lead.location ? ` in ${result.lead.location}` : ""}${result.lead.budget ? ` around ₹${(result.lead.budget / 10000000).toFixed(1)} Cr` : ""}, I’ve shortlisted ${matches.length ? "a few properties that match your preferences" : "the information currently available"}. I can also arrange a property visit at a convenient time.`
+  let reply = `Hi ${result.lead.name}, based on your requirement${result.lead.bedrooms ? ` for a ${result.lead.bedrooms} BHK` : ""}${result.lead.location ? ` in ${result.lead.location}` : ""}${result.lead.budget ? ` around ₹${(result.lead.budget / 10000000).toFixed(1)} Cr` : ""}, I've shortlisted ${matches.length ? "a few properties that match your preferences" : "the information currently available"}. I can also arrange a property visit at a convenient time.`
   if (key) {
     try {
       const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: process.env.OPENAI_MODEL || "gpt-4o-mini", temperature: 0.3, messages: [{ role: "system", content: "Write one concise, professional real-estate WhatsApp/email reply. Use only the supplied lead facts and say when details are missing. Never invent property facts." }, { role: "user", content: JSON.stringify({ lead: result.lead, matches }) }] }), signal: AbortSignal.timeout(8_000) })

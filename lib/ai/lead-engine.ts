@@ -225,7 +225,19 @@ export async function processLeadMessage(context: WorkspaceContext, leadId: stri
     await tx.message.create({ data: { conversationId: currentConversation.id, organizationId: context.organizationId, role: "ASSISTANT", content: generated.content, extractedData: JSON.stringify(extracted) } })
     const nextStatus = ["WON", "LOST", "APPOINTMENT"].includes(lead.status) ? lead.status : (extracted.propertyType || extracted.location || extracted.budget || extracted.bedrooms ? "QUALIFIED" : "CONTACTED")
     const updatedLead = await tx.lead.update({ where: { id: leadId }, data: { propertyType: extracted.propertyType, bedrooms: extracted.bedrooms, location: extracted.location, budget: extracted.budget, timeline: extracted.timeline, possession: extracted.possessionPreference, possessionPreference: extracted.possessionPreference, intent: extracted.intent?.toLowerCase(), score: score.score, classification: score.classification, status: nextStatus, lastActivityAt: now } })
-    await tx.leadScore.create({ data: { leadId, organizationId: context.organizationId, ...score, reasoning: JSON.stringify(score.reasons) } })
+    await tx.leadScore.create({ data: {
+      leadId,
+      organizationId: context.organizationId,
+      score: score.score,
+      classification: score.classification,
+      budgetMatch: score.budgetMatch,
+      timelineScore: score.timelineScore,
+      engagementScore: score.engagementScore,
+      propertyInterestScore: score.propertyInterestScore,
+      locationMatch: score.locationMatch,
+      conversationScore: score.conversationScore,
+      reasoning: JSON.stringify(score.reasons),
+    } })
     await tx.activity.createMany({ data: [
       { type: "CONVERSATION_MESSAGE", description: `New lead message from ${lead.name}`, organizationId: context.organizationId, leadId, userId: context.userId },
       { type: "AI_QUALIFICATION_COMPLETED", description: `AI extracted requirements and classified this lead as ${score.classification}`, metadata: JSON.stringify({ extracted, score: score.score, matches: matches.map((item) => item.id) }), organizationId: context.organizationId, leadId, userId: context.userId },
