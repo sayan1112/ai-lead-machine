@@ -9,6 +9,5 @@ export default defineConfig({
   },
   datasource: {
     url: process.env.DATABASE_URL || "postgresql://localhost/ai_lead_machine",
-    directUrl: process.env.DIRECT_URL || process.env.DATABASE_URL,
   },
 });
